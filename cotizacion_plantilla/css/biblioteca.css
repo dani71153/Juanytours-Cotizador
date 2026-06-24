@@ -1,0 +1,303 @@
+/* =============================================
+   BIBLIOTECA — Tabs + Panel de cotizaciones guardadas
+   ============================================= */
+
+/* =============================================
+   TAB BAR — blanco con sombra, alto contraste
+   ============================================= */
+.tab-bar {
+  position: fixed;
+  top: 56px;
+  left: 0; right: 0;
+  height: 40px;
+  background: #FFFFFF;
+  display: flex;
+  align-items: stretch;
+  z-index: 900;
+  border-bottom: 2px solid #D8E4F2;
+  box-shadow: 0 3px 8px rgba(0,0,0,.12);
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+.tab-bar::-webkit-scrollbar { height: 3px; }
+.tab-bar::-webkit-scrollbar-thumb { background: #BDD0E8; }
+
+.tabs-lista {
+  display: flex;
+  align-items: stretch;
+  flex: 1;
+  min-width: 0;
+}
+
+/* Tab individual */
+.tab-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 18px;
+  font-size: 12.5px;
+  color: #4A5568;
+  cursor: pointer;
+  border-right: 1px solid #E8EEF6;
+  white-space: nowrap;
+  transition: background .12s, color .12s;
+  user-select: none;
+  min-width: 110px;
+  max-width: 200px;
+}
+.tab-item:hover { background: #F0F5FB; color: #0052A5; }
+
+/* Tab activo */
+.tab-item.activo {
+  background: #F0F5FB;
+  color: #0052A5;
+  font-weight: 700;
+  border-bottom: 3px solid #0052A5;
+  margin-bottom: -2px;
+}
+
+/* Tab Biblioteca */
+.tab-biblioteca {
+  min-width: 130px;
+  font-weight: 500;
+}
+.tab-biblioteca .tab-ico { font-size: 14px; }
+
+/* Botón cerrar tab */
+.tab-cerrar {
+  background: none;
+  border: none;
+  color: #9AAFC5;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 3px;
+  margin-left: auto;
+  transition: color .1s, background .1s;
+}
+.tab-cerrar:hover { color: #c0392b; background: #FEE2E2; }
+
+/* Botón indicador de guardado no guardado */
+.tab-sin-guardar .tab-num::after {
+  content: ' •';
+  color: #F0A500;
+}
+
+/* =============================================
+   BARRA DE CONTROL — ajustes para dos modos
+   ============================================= */
+.btn-guardar { background: #1A6B3C; color: #fff; }
+
+/* Toast de confirmación de guardado */
+.toast-guardado {
+  position: fixed;
+  bottom: 24px;
+  right: 28px;
+  background: #1A6B3C;
+  color: #fff;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: bold;
+  box-shadow: 0 4px 16px rgba(0,0,0,.25);
+  z-index: 3000;
+  animation: slideUp .2s ease;
+}
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* =============================================
+   PANEL BIBLIOTECA
+   ============================================= */
+.panel-biblioteca {
+  width: 860px;
+  margin: 28px auto 60px;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 4px 24px rgba(0,0,0,.14);
+  overflow: hidden;
+}
+
+/* Encabezado de la biblioteca */
+.bib-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 24px 14px;
+  border-bottom: 1px solid #E5EAF2;
+}
+.bib-titulo-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.bib-titulo-ico { font-size: 22px; }
+.bib-titulo-texto {
+  font-size: 20px;
+  font-weight: 800;
+  color: #1a2b4a;
+  margin: 0;
+}
+.bib-contador {
+  background: #E8F0FB;
+  color: #0052A5;
+  font-size: 12px;
+  font-weight: bold;
+  padding: 3px 10px;
+  border-radius: 20px;
+}
+
+/* Botones del header de biblioteca */
+.btn-bib {
+  padding: 7px 14px;
+  font-size: 12.5px;
+  border-radius: 5px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  font-weight: 500;
+  transition: opacity .12s;
+}
+.btn-bib:hover { opacity: .82; }
+.btn-bib-exportar {
+  background: #F0F4FB;
+  color: #0052A5;
+  border-color: #C2D3EC;
+}
+
+/* Buscador */
+.bib-buscar-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 24px;
+  border-bottom: 1px solid #E5EAF2;
+  background: #F7F9FC;
+}
+.bib-buscar-ico { font-size: 15px; color: #888; }
+.bib-buscar-inp {
+  flex: 1;
+  border: 1px solid #D4DCEC;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 13px;
+  color: #333;
+  background: #fff;
+  transition: border-color .15s;
+}
+.bib-buscar-inp:focus { outline: none; border-color: #0052A5; }
+
+/* Lista de cotizaciones */
+.bib-lista { padding: 8px 0; }
+
+.bib-vacia,
+.bib-cargando,
+.bib-error {
+  text-align: center;
+  padding: 48px 24px;
+  color: #888;
+  font-size: 14px;
+}
+.bib-error { color: #c0392b; }
+
+/* ─── Item de cotización ────────────────────── */
+.bib-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 13px 24px;
+  border-bottom: 1px solid #F0F3F8;
+  transition: background .1s;
+}
+.bib-item:last-child { border-bottom: none; }
+.bib-item:hover { background: #F7F9FC; }
+.bib-item-archivada { opacity: .6; }
+
+/* Badge de estado */
+.bi-badge {
+  font-size: 11px;
+  font-weight: bold;
+  padding: 3px 9px;
+  border-radius: 20px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.bi-badge-activa    { background: #D1FAE5; color: #065F46; }
+.bi-badge-archivada { background: #E5E7EB; color: #6B7280; }
+
+/* Info principal */
+.bi-info {
+  flex: 1;
+  min-width: 0;
+}
+.bi-numero {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1a2b4a;
+}
+.bi-cliente {
+  font-size: 12.5px;
+  color: #555;
+  margin-top: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.bi-meta {
+  display: flex;
+  gap: 14px;
+  margin-top: 5px;
+  font-size: 11.5px;
+  color: #888;
+}
+.bi-meta span { white-space: nowrap; }
+
+/* Botones de acción */
+.bi-acciones {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.bi-btn {
+  padding: 5px 13px;
+  font-size: 12px;
+  font-family: inherit;
+  font-weight: 600;
+  border-radius: 6px;
+  cursor: pointer;
+  border: 1px solid;
+  white-space: nowrap;
+  letter-spacing: .2px;
+  transition: filter .12s, transform .06s;
+  line-height: 1.4;
+}
+.bi-btn:hover  { filter: brightness(.92); }
+.bi-btn:active { transform: scale(.96); }
+
+.bi-btn-cargar   { background: #0052A5; color: #fff;    border-color: #003A78; }
+.bi-btn-duplicar { background: #F0F7FF; color: #0052A5; border-color: #93C5FD; }
+.bi-btn-pdf      { background: #EFF4FC; color: #0052A5; border-color: #BACCEC; }
+.bi-btn-archivar { background: #F4F5F7; color: #42526E; border-color: #C1C7D0; }
+.bi-btn-restaurar{ background: #E3FCEF; color: #006644; border-color: #ABF5D1; }
+.bi-btn-eliminar { background: #FFECEB; color: #AE2A19; border-color: #FFBDAD; }
+
+/* Botón importar en el header de Biblioteca */
+.btn-bib-importar {
+  background: #F0F7FF;
+  color: #0052A5;
+  border-color: #93C5FD;
+}
+
+/* =============================================
+   @media print — ocultar todo lo nuevo
+   ============================================= */
+@media print {
+  .tab-bar,
+  .panel-biblioteca,
+  .toast-guardado { display: none !important; }
+
+  body { padding-top: 0 !important; }
+}

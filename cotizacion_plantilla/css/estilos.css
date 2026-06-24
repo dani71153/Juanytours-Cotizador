@@ -1,0 +1,780 @@
+/* =============================================
+   JUANYTOURS — SISTEMA DE COTIZACIÓN
+   ============================================= */
+
+:root {
+  --azul:      #0052A5;
+  --azul-dark: #003A78;
+  --azul-text: #0052A5;
+  --gris-borde:#C8C8C8;
+  --gris-fondo:#F4F7FB;
+  --negro:     #222222;
+  --fuente:    Arial, Helvetica, sans-serif;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: #DEE6EF;
+  font-family: var(--fuente);
+  font-size: 13px;
+  color: var(--negro);
+  min-height: 100vh;
+  padding-top: 98px; /* 56px barra-control + 42px tab-bar */
+}
+
+/* =============================================
+   BARRA DE CONTROL
+   ============================================= */
+#barra-control {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: 56px;
+  background: var(--azul-dark);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  z-index: 1000;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.35);
+}
+
+.bc-marca {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #fff;
+  font-weight: bold;
+  font-size: 14px;
+}
+
+.bc-marca img {
+  height: 36px;
+  object-fit: contain;
+}
+
+.bc-acciones {
+  display: flex;
+  gap: 10px;
+}
+
+.btn-ctrl {
+  padding: 7px 16px;
+  border: none;
+  border-radius: 5px;
+  font-size: 13px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: opacity .15s;
+}
+.btn-ctrl:hover { opacity: .85; }
+
+.btn-nuevo   { background: #fff;    color: var(--azul-dark); }
+.btn-agregar { background: #28A745; color: #fff; }
+.btn-nota    { background: #8C6A00; color: #fff; }
+.btn-tasa    { background: #5A3EA1; color: #fff; }
+.btn-pdf     { background: #E85421; color: #fff; }
+
+/* =============================================
+   DOCUMENTO / PÁGINA
+   ============================================= */
+.pagina {
+  background: #fff;
+  width: 860px;
+  margin: 28px auto 60px;
+  padding: 36px 40px 40px;
+  box-shadow: 0 4px 24px rgba(0,0,0,.18);
+  border-top: 5px solid var(--azul);
+}
+
+/* =============================================
+   ENCABEZADO
+   ============================================= */
+.encabezado {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 14px;
+}
+
+.enc-izq {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  max-width: 55%;
+}
+
+.doc-logo {
+  height: 80px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.doc-empresa-datos p {
+  font-size: 12px;
+  line-height: 1.55;
+  color: #333;
+}
+
+.empresa-nombre {
+  font-size: 15px !important;
+  font-weight: bold;
+  color: var(--azul) !important;
+  letter-spacing: .5px;
+}
+
+.enc-der {
+  text-align: right;
+  min-width: 220px;
+}
+
+.doc-numero-wrap {
+  font-size: 13px;
+  color: #555;
+  margin-bottom: 2px;
+}
+
+.doc-numero {
+  font-weight: bold;
+  border-bottom: 1px dashed #bbb;
+  min-width: 40px;
+  display: inline-block;
+  text-align: center;
+  cursor: text;
+}
+.doc-numero:focus { outline: none; background: #FFF9D6; border-radius: 2px; }
+
+.sel-tipo {
+  display: block;
+  margin-left: auto;
+  margin-bottom: 4px;
+  font-size: 11px;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  padding: 2px 4px;
+  color: #555;
+  background: #f9f9f9;
+}
+
+.doc-titulo-texto {
+  font-size: 26px;
+  font-weight: 900;
+  color: var(--azul);
+  letter-spacing: 1px;
+  display: block;
+  line-height: 1;
+  margin-bottom: 10px;
+  text-transform: uppercase;
+}
+
+.doc-fecha-ref { font-size: 12px; }
+
+.fr-fila {
+  display: flex;
+  justify-content: flex-end;
+  align-items: baseline;
+  gap: 6px;
+  margin-bottom: 3px;
+}
+
+.fr-label { font-weight: bold; color: var(--azul-text); white-space: nowrap; }
+.fr-val   { min-width: 80px; text-align: right; }
+
+.inp-fecha {
+  border: none;
+  border-bottom: 1px dashed #bbb;
+  font-size: 12px;
+  font-family: var(--fuente);
+  color: #333;
+  background: transparent;
+  text-align: right;
+  cursor: pointer;
+}
+.inp-fecha:focus { outline: none; background: #FFF9D6; }
+
+/* =============================================
+   LÍNEA SEPARADORA
+   ============================================= */
+.linea-azul {
+  height: 3px;
+  background: var(--azul);
+  margin: 12px 0;
+}
+
+/* =============================================
+   SECCIÓN CLIENTE
+   ============================================= */
+.seccion-cliente {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  background: var(--gris-fondo);
+  border: 1px solid var(--gris-borde);
+  padding: 10px 14px;
+  margin-bottom: 16px;
+}
+
+.cli-izq p, .cli-der p {
+  font-size: 12.5px;
+  line-height: 1.7;
+}
+
+.cli-label {
+  font-weight: bold;
+  color: var(--azul-text);
+  margin-right: 5px;
+}
+
+.cli-val {
+  min-width: 120px;
+  display: inline-block;
+  border-bottom: 1px dashed #ccc;
+  cursor: text;
+}
+.cli-val:focus      { outline: none; background: #FFF9D6; border-radius: 2px; }
+.cli-val:empty::before {
+  content: attr(data-placeholder);
+  color: #aaa;
+  font-style: italic;
+}
+
+.cli-der { text-align: right; }
+
+.cli-tipo-doc {
+  font-size: 14px;
+  font-weight: bold;
+  color: var(--azul-text);
+  text-transform: uppercase;
+}
+
+/* =============================================
+   TABLA DE SERVICIOS
+   ============================================= */
+.tabla-servicios {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 18px;
+  font-size: 12.5px;
+}
+
+.tabla-servicios th {
+  background: var(--azul);
+  color: #fff;
+  text-align: center;
+  padding: 7px 8px;
+  font-weight: bold;
+  font-size: 12px;
+  border: 1px solid var(--azul-dark);
+}
+
+.th-det { text-align: left !important; }
+
+.tabla-servicios td {
+  border: 1px solid var(--gris-borde);
+  padding: 7px 9px;
+  vertical-align: top;
+}
+
+.td-num {
+  text-align: center;
+  font-weight: bold;
+  width: 44px;
+  vertical-align: middle;
+}
+
+.td-det {
+  min-width: 300px;
+  white-space: pre-wrap;
+  line-height: 1.5;
+}
+
+.td-cantidad {
+  text-align: center;
+  width: 80px;
+  vertical-align: middle;
+}
+
+.td-monto {
+  text-align: right;
+  width: 120px;
+  vertical-align: middle;
+  font-weight: 500;
+}
+
+.td-tipo {
+  width: 95px;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.td-del {
+  width: 32px;
+  text-align: center;
+  vertical-align: middle;
+}
+
+/* Celdas editables en tabla */
+[contenteditable="true"] {
+  cursor: text;
+  outline: none;
+}
+[contenteditable="true"]:focus {
+  background: #FFF9D6;
+  border-radius: 2px;
+}
+[contenteditable="true"]:empty::before {
+  content: attr(data-placeholder);
+  color: #bbb;
+  font-style: italic;
+}
+
+/* Select de tipo (exento/gravado) */
+.sel-tipo-item {
+  font-size: 11px;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  padding: 2px 3px;
+  width: 85px;
+  color: #444;
+  background: #f9f9f9;
+}
+
+/* Botones de reordenamiento ↑ ↓ */
+.btn-mover {
+  background: none;
+  border: none;
+  color: #7A95B8;
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 1px 3px;
+  border-radius: 3px;
+  transition: background .12s, color .12s;
+}
+.btn-mover:hover:not(:disabled) { background: #E8EFF8; color: #0052A5; }
+.btn-mover:disabled { color: #CDD7E5; cursor: default; }
+
+/* Botón eliminar fila */
+.btn-eliminar {
+  background: none;
+  border: none;
+  color: #cc3333;
+  font-size: 16px;
+  cursor: pointer;
+  line-height: 1;
+  padding: 2px 4px;
+  border-radius: 3px;
+  transition: background .12s;
+}
+.btn-eliminar:hover { background: #FFEAEA; }
+
+/* Fila vacía de relleno */
+.tr-vacio td {
+  height: 36px;
+  border: 1px solid var(--gris-borde);
+}
+
+/* =============================================
+   FILA DE NOTA (ancho completo dentro de tabla)
+   ============================================= */
+.tr-nota .td-nota {
+  background: #FFFBE6;
+  border: 1px dashed #C8A400;
+  border-left: 4px solid #C8A400;
+  padding: 8px 12px;
+  font-style: italic;
+  color: #5A4800;
+  white-space: pre-wrap;
+  line-height: 1.5;
+  font-size: 12px;
+}
+.tr-nota .td-nota:focus {
+  background: #FFF8D0;
+  outline: none;
+}
+.tr-nota .td-nota:empty::before {
+  content: attr(data-placeholder);
+  color: #C8A400;
+  opacity: .7;
+}
+/* Badge "Nota:" visible en pantalla pero oculto en impresión */
+.tr-nota .td-nota::after {
+  content: '';
+}
+
+/* =============================================
+   SECCIÓN TOTALES
+   ============================================= */
+.seccion-totales {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 6px;
+}
+
+.tot-izq {
+  flex: 1;
+  padding-right: 20px;
+  align-self: flex-end;
+}
+
+.tipo-cambio-texto {
+  font-size: 12px;
+  color: #444;
+  font-style: italic;
+}
+
+.tasa-val {
+  font-weight: bold;
+  border-bottom: 1px dashed #bbb;
+  min-width: 40px;
+  display: inline-block;
+  text-align: center;
+  cursor: text;
+}
+.tasa-val:focus { background: #FFF9D6; border-radius: 2px; }
+
+.tot-der { min-width: 320px; }
+
+.tabla-totales {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+
+.tabla-totales td {
+  padding: 5px 10px;
+  border: 1px solid var(--gris-borde);
+}
+
+.tot-label { font-weight: bold; }
+.tot-signo { text-align: center; width: 20px; color: #555; }
+.tot-val   { text-align: right;  min-width: 90px; }
+
+.tot-fila-dop td { background: #E8F0FB; }
+.tot-fila-usd td { background: #DFF0DC; }
+
+/* =============================================
+   SECCIÓN PAGO / BANCO
+   ============================================= */
+.seccion-pago {
+  margin-top: 22px;
+  border: 1px solid var(--gris-borde);
+  font-size: 12.5px;
+}
+
+.pago-head {
+  display: flex;
+  justify-content: space-between;
+  padding: 7px 10px;
+  background: var(--gris-fondo);
+  border-bottom: 1px solid var(--gris-borde);
+}
+
+.pago-banco {
+  padding: 6px 10px;
+  font-weight: bold;
+  font-size: 12px;
+  text-align: center;
+  border-bottom: 1px solid var(--gris-borde);
+  color: #333;
+}
+
+/* Grid de cuentas bancarias */
+.pago-cuentas {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  font-size: 11.5px;
+}
+
+.pc-celda {
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--gris-borde);
+  border-right: 1px solid var(--gris-borde);
+}
+
+.pc-label { font-weight: bold; }
+
+.pc-swift {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 5px 12px;
+  border-bottom: 1px solid var(--gris-borde);
+  grid-row: 1 / 3;
+  text-align: center;
+}
+
+.pago-metodo {
+  padding: 7px 10px;
+  border-top: 1px solid var(--gris-borde);
+  font-size: 12px;
+}
+
+.pago-notas {
+  padding: 7px 10px;
+  border-top: 1px solid var(--gris-borde);
+  font-size: 12px;
+  min-height: 30px;
+  color: #555;
+}
+.pago-notas:empty::before {
+  content: attr(data-placeholder);
+  color: #bbb;
+  font-style: italic;
+}
+
+/* =============================================
+   PLACEHOLDERS CONTENTEDITABLE
+   ============================================= */
+.fr-val:empty::before {
+  content: attr(data-placeholder);
+  color: #ccc;
+  font-style: italic;
+}
+
+/* =============================================
+   MODAL — TASA DE CAMBIO
+   ============================================= */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, .5);
+  z-index: 2000;
+  align-items: center;
+  justify-content: center;
+}
+.modal-overlay.visible { display: flex; }
+
+.modal-card {
+  background: #fff;
+  border-radius: 10px;
+  width: 380px;
+  box-shadow: 0 8px 32px rgba(0,0,0,.28);
+  overflow: hidden;
+  animation: fadeUp .18s ease;
+}
+/* Modal más ancho para la gestión de tasa */
+.modal-tasa-card { width: 470px; }
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--azul-dark);
+  color: #fff;
+  padding: 12px 16px;
+  font-weight: bold;
+  font-size: 14px;
+}
+.modal-cerrar {
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 20px;
+  cursor: pointer;
+  line-height: 1;
+  opacity: .8;
+}
+.modal-cerrar:hover { opacity: 1; }
+
+.modal-body {
+  padding: 0;
+}
+.modal-desc {
+  font-size: 12px;
+  color: #666;
+  margin-bottom: 12px;
+  line-height: 1.4;
+}
+
+/* Secciones internas del modal */
+.tasa-seccion {
+  padding: 18px 22px;
+}
+.tasa-divisor {
+  height: 1px;
+  background: #e0e0e0;
+  margin: 0;
+}
+.tasa-sec-titulo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.tasa-badge {
+  font-size: 11px;
+  font-weight: bold;
+  padding: 3px 9px;
+  border-radius: 20px;
+  letter-spacing: .4px;
+  text-transform: uppercase;
+}
+.tasa-badge-oficial {
+  background: #DBEAFE;
+  color: #1D4ED8;
+}
+.tasa-badge-fija {
+  background: #FEF3C7;
+  color: #92400E;
+}
+.tasa-link {
+  font-size: 11.5px;
+  color: var(--azul);
+  text-decoration: none;
+  font-weight: bold;
+}
+.tasa-link:hover { text-decoration: underline; }
+
+/* Radio options */
+.tasa-opcion {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  cursor: pointer;
+  margin-bottom: 8px;
+  color: #333;
+}
+.tasa-opcion input[type="radio"] { accent-color: var(--azul); width: 14px; height: 14px; }
+
+/* Fila de input de tasa */
+.tasa-input-fila {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+}
+/* Fila de tasa fija: indentada */
+.tasa-fija-row {
+  margin-left: 22px;
+  margin-top: 4px;
+}
+.tasa-etq {
+  font-weight: bold;
+  color: #444;
+  white-space: nowrap;
+  font-size: 13px;
+}
+.tasa-inp {
+  flex: 1;
+  padding: 8px 10px;
+  font-size: 17px;
+  font-weight: bold;
+  border: 2px solid var(--azul);
+  border-radius: 6px;
+  text-align: center;
+  color: #222;
+  transition: border-color .15s, opacity .15s;
+}
+.tasa-inp:focus  { outline: none; border-color: var(--azul-dark); }
+.tasa-inp:disabled { opacity: .45; cursor: not-allowed; border-color: #ccc; }
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 12px 22px 16px;
+  border-top: 1px solid #eee;
+}
+.btn-modal-cancelar {
+  padding: 8px 18px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  background: #f5f5f5;
+  cursor: pointer;
+  font-size: 13px;
+}
+.btn-modal-ok {
+  padding: 8px 22px;
+  border: none;
+  border-radius: 5px;
+  background: var(--azul);
+  color: #fff;
+  font-weight: bold;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background .15s;
+}
+.btn-modal-ok:hover { background: var(--azul-dark); }
+
+/* ── Indicador de tasa en el documento ── */
+.tasa-indicador {
+  font-size: 10.5px;
+  font-weight: bold;
+  padding: 1px 7px;
+  border-radius: 10px;
+  margin-left: 6px;
+  vertical-align: middle;
+  cursor: pointer;
+}
+.tasa-ind-oficial {
+  background: #DBEAFE;
+  color: #1D4ED8;
+}
+.tasa-ind-fija {
+  background: #FEF3C7;
+  color: #92400E;
+}
+
+/* =============================================
+   UTILIDADES
+   ============================================= */
+.no-print { /* solo en pantalla */ }
+
+/* =============================================
+   MEDIA PRINT
+   ============================================= */
+@media print {
+  body {
+    background: #fff !important;
+    padding-top: 0 !important;
+    font-size: 12px;
+  }
+
+  .no-print { display: none !important; }
+
+  .pagina {
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 20px 24px !important;
+    box-shadow: none !important;
+    border-top: 4px solid var(--azul) !important;
+  }
+
+  .btn-eliminar,
+  .btn-mover,
+  .sel-tipo-item,
+  .sel-tipo,
+  .th-tipo,
+  .td-tipo,
+  .th-del,
+  .td-del { display: none !important; }
+
+  .tabla-servicios th,
+  .tabla-servicios td { font-size: 11px; }
+
+  .doc-titulo-texto { font-size: 22px; }
+
+  /* Notas en impresión: borde sólido suave, sin fondo amarillo */
+  .tr-nota .td-nota {
+    background: #fafafa !important;
+    border: 1px solid #ccc !important;
+    border-left: 3px solid #aaa !important;
+    color: #444 !important;
+    font-style: italic;
+  }
+
+  @page {
+    size: A4 portrait;
+    margin: 12mm 10mm;
+  }
+}

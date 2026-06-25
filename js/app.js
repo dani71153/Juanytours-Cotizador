@@ -253,7 +253,8 @@ function capturarEstado() {
     tasaOficial: typeof TasaCambio !== 'undefined' ? TasaCambio.getOficial() : 60.65,
     tasaFija:    typeof TasaCambio !== 'undefined' ? TasaCambio.getFija()    : null,
     metodo:      getCE('doc-metodo'),
-    notas:       getCE('doc-notas')
+    notas:       getCE('doc-notas'),
+    ocultarTasa: document.getElementById('documento')?.classList.contains('sin-tasa') || false
   };
 }
 
@@ -284,6 +285,12 @@ function restaurarEstado(datos) {
     TasaCambio.setOficial(datos.tasaOficial || window._DEFAULTS?.tasaOficial || 60.65);
     TasaCambio.setFija(datos.tasaFija ?? null);
   }
+
+  // Restaurar visibilidad de tasa en PDF
+  const docEl  = document.getElementById('documento');
+  const btnVis = document.getElementById('btn-tasa-vis');
+  if (docEl)  docEl.classList.toggle('sin-tasa', !!datos.ocultarTasa);
+  if (btnVis) _actualizarBtnTasaVis(btnVis, !!datos.ocultarTasa);
 
   calcularTotales();
 }
@@ -316,6 +323,11 @@ function iniciarEstadoVacio(numero = null) {
     TasaCambio.setOficial(d.tasaOficial || 60.65);
     TasaCambio.setFija(null);
   }
+
+  const docEl2  = document.getElementById('documento');
+  const btnVis2 = document.getElementById('btn-tasa-vis');
+  if (docEl2)  docEl2.classList.remove('sin-tasa');
+  if (btnVis2) _actualizarBtnTasaVis(btnVis2, false);
 
   calcularTotales();
   TabManager.actualizarNumero(num);
@@ -737,6 +749,25 @@ function cambiarTipoDoc(valor) {
 }
 
 // =============================================
+//  VISIBILIDAD TASA EN PDF
+// =============================================
+function toggleOcultarTasa() {
+  const doc = document.getElementById('documento');
+  const btn = document.getElementById('btn-tasa-vis');
+  if (!doc || !btn) return;
+  const oculta = !doc.classList.contains('sin-tasa');
+  doc.classList.toggle('sin-tasa', oculta);
+  _actualizarBtnTasaVis(btn, oculta);
+  TabManager.marcarSinGuardar();
+}
+
+function _actualizarBtnTasaVis(btn, oculta) {
+  btn.textContent = oculta ? 'Mostrar en PDF' : 'Ocultar en PDF';
+  btn.title       = oculta ? 'La tasa está oculta en el PDF — clic para mostrar' : 'Ocultar tasa de cambio en el PDF';
+  btn.classList.toggle('oculta', oculta);
+}
+
+// =============================================
 //  EXPORTAR PDF
 // =============================================
 function exportarPDF() {
@@ -904,4 +935,269 @@ function mostrarToast(msg, error = false) {
   el.style.display = 'block';
   if (_toastTimer) clearTimeout(_toastTimer);
   _toastTimer = setTimeout(() => { el.style.display = 'none'; }, 2200);
+}
+
+// =============================================
+//  EXPORTAR HTML EDITABLE (auto-contenido)
+// =============================================
+async function exportarHTML() {
+  const estado   = capturarEstado();
+  const numRaw   = estado.numero || 'cotizacion';
+  const logoSrc  = await _logoABase64();
+  const cssText  = _extractCSS();
+  const emp      = window.EMPRESA?.empresa || {};
+  const ban      = window.EMPRESA?.banco   || {};
+  const fi       = window.EMPRESA?.fiscal  || {};
+  const tipoDoc  = estado.tipoDoc || 'COTIZACIÓN';
+  const tasa     = typeof TasaCambio !== 'undefined' ? TasaCambio.get() : 60.65;
+  const itbisPct = fi.itbisPorcentaje || 18;
+  const cuentasHTML = document.getElementById('bloque-cuentas')?.innerHTML || '';
+  const ocultarTasa = document.getElementById('documento')?.classList.contains('sin-tasa') || false;
+  const filasHTML   = _htmlFilas(estado.items, itbisPct);
+
+  const tiposOpts = ['COTIZACIÓN','FACTURA DE CRÉDITO FISCAL','FACTURA','PROFORMA']
+    .map(t => `<option value="${t}"${t === tipoDoc ? ' selected' : ''}>${t}</option>`).join('');
+
+  const scriptInline = `(function(){
+  var ITBIS=${itbisPct};
+  function pM(s){return parseFloat(String(s).replace(/[\\s,]/g,''))||0;}
+  function fN(n){return Number(n).toLocaleString('es-DO',{minimumFractionDigits:2,maximumFractionDigits:2});}
+  function sT(id,v){var el=document.getElementById(id);if(el)el.textContent=v;}
+  window.calcTotales=function(){
+    var tasa=pM(document.getElementById('doc-tasa')?.innerText||'60.65')||60.65;
+    var ex=0,gr=0;
+    document.querySelectorAll('#tabla-body tr[data-tipo]').forEach(function(tr){
+      var monto=pM((tr.querySelector('[data-field="monto"]')||{}).innerText||'0');
+      var cant=parseFloat((tr.querySelector('[data-field="cantidad"]')||{}).innerText||'1')||1;
+      if(tr.dataset.tipo==='gravado') gr+=monto*cant; else ex+=monto*cant;
+    });
+    var itbs=gr*(ITBIS/100),dop=ex+gr+itbs,usd=tasa>0?dop/tasa:0;
+    sT('tot-excento',fN(ex));sT('tot-gravado',fN(gr));sT('tot-itbis',fN(itbs));
+    document.getElementById('tot-dop').innerHTML='<strong>'+fN(dop)+'</strong>';
+    document.getElementById('tot-usd').innerHTML='<strong>'+fN(usd)+'</strong>';
+  };
+  window.cambiarTipoDoc=function(v){sT('doc-titulo-texto',v);sT('cli-tipo-doc-texto',v);};
+  window.imprimir=function(){
+    var num=document.getElementById('doc-numero')?.textContent||'cotizacion';
+    var t=document.title;document.title='Juanytours-'+num.trim();window.print();document.title=t;
+  };
+  document.querySelectorAll('[data-field="monto"],[data-field="cantidad"]').forEach(function(el){
+    el.addEventListener('input',window.calcTotales);
+  });
+  document.querySelectorAll('.sel-tipo-item').forEach(function(sel){
+    sel.addEventListener('change',function(){this.closest('tr').dataset.tipo=this.value;window.calcTotales();});
+  });
+  window.calcTotales();
+})();`;
+
+  const html =
+`<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Juanytours — ${escHTML(numRaw)}</title>
+  <style>
+${cssText}
+body{padding-top:52px!important;background:#DEE6EF;}
+.exp-bar{position:fixed;top:0;left:0;right:0;height:44px;background:#003A78;display:flex;
+  align-items:center;justify-content:space-between;padding:0 24px;z-index:1000;
+  box-shadow:0 2px 8px rgba(0,0,0,.35);font-family:Arial,Helvetica,sans-serif;}
+.exp-titulo{color:#fff;font-weight:bold;font-size:14px;}
+.exp-btns{display:flex;align-items:center;gap:14px;}
+.exp-nota{color:#AAC4E8;font-size:11.5px;}
+.exp-btn{padding:6px 16px;border:none;border-radius:5px;font-size:13px;font-weight:bold;
+  cursor:pointer;font-family:inherit;}
+.exp-btn-print{background:#E85421;color:#fff;}
+.exp-btn-print:hover{opacity:.85;}
+@media print{.exp-bar{display:none!important;}body{padding-top:0!important;background:#fff!important;}${ocultarTasa ? '.tot-izq{visibility:hidden!important;}' : ''}}
+  </style>
+</head>
+<body>
+<div class="exp-bar">
+  <span class="exp-titulo">Juanytours &mdash; ${escHTML(numRaw)}</span>
+  <div class="exp-btns">
+    <span class="exp-nota">Los campos son editables &middot; los cambios no se guardan automáticamente</span>
+    <button class="exp-btn exp-btn-print" onclick="imprimir()">&#x2B07; Imprimir / PDF</button>
+  </div>
+</div>
+
+<div class="pagina">
+  <div class="encabezado">
+    <div class="enc-izq">
+      ${logoSrc ? `<img src="${logoSrc}" alt="Logo" class="doc-logo"/>` : ''}
+      <div class="doc-empresa-datos">
+        <p class="empresa-nombre">${escHTML(emp.nombre || '')}</p>
+        <p>${escHTML(emp.direccion || '')}</p>
+        <p>${escHTML(emp.ciudad || '')}</p>
+        ${emp.telefono ? `<p>Tel&eacute;fono: ${escHTML(emp.telefono)}</p>` : ''}
+        ${emp.rnc     ? `<p>RNC: ${escHTML(emp.rnc)}</p>` : ''}
+      </div>
+    </div>
+    <div class="enc-der">
+      <div class="doc-numero-wrap">
+        <span class="doc-numero" contenteditable="true" id="doc-numero">${escHTML(numRaw)}</span>
+      </div>
+      <div class="doc-titulo-tipo">
+        <select id="sel-tipo-doc" class="sel-tipo" onchange="cambiarTipoDoc(this.value)">${tiposOpts}</select>
+        <span id="doc-titulo-texto" class="doc-titulo-texto">${escHTML(tipoDoc)}</span>
+      </div>
+      <div class="doc-fecha-ref">
+        <div class="fr-fila">
+          <span class="fr-label">FECHA:</span>
+          <input type="date" id="doc-fecha" class="inp-fecha" value="${escHTML(estado.fecha || '')}"/>
+        </div>
+        <div class="fr-fila">
+          <span class="fr-label">REFERENCIA:</span>
+          <span class="fr-val" contenteditable="true" data-placeholder="0">${escHTML(estado.ref || '')}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="linea-azul"></div>
+
+  <div class="seccion-cliente">
+    <div class="cli-izq">
+      <p><span class="cli-label">CLIENTE:</span>
+         <span class="cli-val" contenteditable="true" data-placeholder="Nombre del cliente">${escHTML(estado.cliente || '')}</span></p>
+      <p><span class="cli-label">TEL.:</span>
+         <span class="cli-val" contenteditable="true" data-placeholder="Tel&eacute;fono">${escHTML(estado.telCli || '')}</span></p>
+      <p><span class="cli-label">RNC:</span>
+         <span class="cli-val" contenteditable="true" data-placeholder="RNC / C&eacute;dula">${escHTML(estado.rncCli || '')}</span></p>
+    </div>
+    <div class="cli-der">
+      <p class="cli-tipo-doc" id="cli-tipo-doc-texto">${escHTML(tipoDoc)}</p>
+      <p><span class="cli-label">NCF:</span>
+         <span class="cli-val" contenteditable="true" data-placeholder="0">${escHTML(estado.ncf || '')}</span></p>
+    </div>
+  </div>
+
+  <table class="tabla-servicios">
+    <thead>
+      <tr>
+        <th class="th-num">Cant.</th>
+        <th class="th-det">Detalles</th>
+        <th class="th-cantidad">Cantidad</th>
+        <th class="th-monto">Monto</th>
+        <th class="th-tipo">Tipo</th>
+      </tr>
+    </thead>
+    <tbody id="tabla-body">
+${filasHTML}    </tbody>
+  </table>
+
+  <div class="seccion-totales">
+    <div class="tot-izq">
+      <p class="tipo-cambio-texto">
+        Tipo de cambio Banco Central
+        ${escHTML(fi.monedaExtranjera || 'USD')} x
+        <span contenteditable="true" id="doc-tasa" class="tasa-val" oninput="calcTotales()">${tasa}</span>
+      </p>
+    </div>
+    <div class="tot-der">
+      <table class="tabla-totales">
+        <tr><td class="tot-label">TOTAL EXCENTO</td><td class="tot-signo">$</td><td class="tot-val" id="tot-excento">0.00</td></tr>
+        <tr><td class="tot-label">TOTAL GRAVADO</td><td class="tot-signo">$</td><td class="tot-val" id="tot-gravado">0.00</td></tr>
+        <tr><td class="tot-label">ITBIS ${itbisPct}%</td><td class="tot-signo">$</td><td class="tot-val" id="tot-itbis">0.00</td></tr>
+        <tr class="tot-fila-dop">
+          <td class="tot-label"><strong>TOTAL ${escHTML(fi.monedaLocal || 'DOP')}</strong></td>
+          <td class="tot-signo"><strong>$</strong></td>
+          <td class="tot-val" id="tot-dop"><strong>0.00</strong></td>
+        </tr>
+        <tr class="tot-fila-usd">
+          <td class="tot-label"><strong>TOTAL ${escHTML(fi.monedaExtranjera || 'USD')}</strong></td>
+          <td class="tot-signo"><strong>$</strong></td>
+          <td class="tot-val" id="tot-usd"><strong>0.00</strong></td>
+        </tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="seccion-pago">
+    <div class="pago-head">
+      <div class="ph-izq">P&aacute;guese A: <strong>${escHTML(ban.pagueA || emp.nombre || '')}</strong></div>
+      <div class="ph-der">RNC: <strong>${escHTML(emp.rnc || '')}</strong></div>
+    </div>
+    <div class="pago-banco">${escHTML(ban.nombre || '')}</div>
+    <div class="pago-cuentas">${cuentasHTML}</div>
+    <div class="pago-metodo">
+      <span>M&eacute;todo de pago:</span>
+      <span contenteditable="true" data-placeholder="Transferencia">${escHTML(estado.metodo || '')}</span>
+    </div>
+    <div class="pago-notas" contenteditable="true" data-placeholder="Notas adicionales...">${escHTML(estado.notas || '')}</div>
+  </div>
+</div>
+
+<script>${scriptInline}<` + `/script>
+</body>
+</html>`;
+
+  const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = `Juanytours-${numRaw.replace(/[^a-z0-9\-_]/gi, '_')}.html`;
+  a.click();
+  URL.revokeObjectURL(url);
+  mostrarToast('✓ HTML descargado');
+}
+
+async function _logoABase64() {
+  return new Promise(resolve => {
+    const img = document.getElementById('doc-logo');
+    if (!img || !img.naturalWidth) { resolve(''); return; }
+    try {
+      const canvas = document.createElement('canvas');
+      canvas.width  = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      canvas.getContext('2d').drawImage(img, 0, 0);
+      resolve(canvas.toDataURL('image/png'));
+    } catch(e) { resolve(''); }
+  });
+}
+
+function _extractCSS() {
+  let css = '';
+  for (const sheet of document.styleSheets) {
+    try {
+      for (const rule of sheet.cssRules || []) {
+        css += rule.cssText + '\n';
+      }
+    } catch(e) { /* cross-origin, skip */ }
+  }
+  return css;
+}
+
+function _htmlFilas(items, itbisPct) {
+  let html = '';
+  let numItem = 0;
+  items.forEach(f => {
+    if (f.type === 'nota') {
+      html += `      <tr class="tr-nota">
+        <td class="td-nota" colspan="4" contenteditable="true">${escHTML(f.texto || '')}</td>
+        <td></td>
+      </tr>\n`;
+    } else {
+      numItem++;
+      const tipo = f.tipo || 'exento';
+      html += `      <tr data-tipo="${tipo}">
+        <td class="td-num">${numItem}</td>
+        <td class="td-det" contenteditable="true" data-field="desc" data-placeholder="Descripci&oacute;n del servicio">${escHTML(f.desc || '')}</td>
+        <td class="td-cantidad" contenteditable="true" data-field="cantidad" data-placeholder="1">${f.cantidad || 1}</td>
+        <td class="td-monto" contenteditable="true" data-field="monto" data-placeholder="0.00">${formatNum(f.monto || 0)}</td>
+        <td class="td-tipo">
+          <select class="sel-tipo-item">
+            <option value="exento"${tipo === 'exento' ? ' selected' : ''}>Exento</option>
+            <option value="gravado"${tipo === 'gravado' ? ' selected' : ''}>Gravado</option>
+          </select>
+        </td>
+      </tr>\n`;
+    }
+  });
+  const totalItems = items.filter(f => f.type === 'item').length;
+  for (let x = totalItems; x < 3; x++) {
+    html += `      <tr class="tr-vacio"><td></td><td></td><td></td><td></td><td></td></tr>\n`;
+  }
+  return html;
 }

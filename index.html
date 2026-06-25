@@ -28,6 +28,7 @@
       <button class="btn-ctrl btn-nota"     onclick="agregarNota()">&#43; Nota</button>
       <button class="btn-ctrl btn-tasa"     onclick="TasaCambio.mostrarEditor()">&#x1F4B1; Tasa</button>
       <button class="btn-ctrl btn-pdf"      onclick="exportarPDF()">&#x2B07; PDF</button>
+      <button class="btn-ctrl btn-html"     onclick="exportarHTML()">&#x1F4C4; HTML</button>
     </div>
   </div>
 
@@ -159,6 +160,8 @@
           <span contenteditable="true" id="doc-tasa" class="tasa-val">60.65</span>
           <span id="tasa-indicador" class="tasa-indicador tasa-ind-oficial no-print">· tasa oficial</span>
         </p>
+        <button class="btn-tasa-vis no-print" id="btn-tasa-vis"
+                onclick="toggleOcultarTasa()">Ocultar en PDF</button>
       </div>
       <div class="tot-der">
         <table class="tabla-totales">

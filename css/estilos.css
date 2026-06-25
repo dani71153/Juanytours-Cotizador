@@ -74,6 +74,7 @@ body {
 .btn-nota    { background: #8C6A00; color: #fff; }
 .btn-tasa    { background: #5A3EA1; color: #fff; }
 .btn-pdf     { background: #E85421; color: #fff; }
+.btn-html    { background: #0E7490; color: #fff; }
 
 /* =============================================
    DOCUMENTO / PÁGINA
@@ -434,6 +435,28 @@ body {
 }
 .tasa-val:focus { background: #FFF9D6; border-radius: 2px; }
 
+.btn-tasa-vis {
+  display: inline-block;
+  margin-top: 6px;
+  font-size: 10.5px;
+  font-weight: bold;
+  padding: 2px 9px;
+  border-radius: 10px;
+  border: 1px solid #93C5FD;
+  background: #DBEAFE;
+  color: #1D4ED8;
+  cursor: pointer;
+  font-family: var(--fuente);
+  transition: opacity .12s;
+  vertical-align: middle;
+}
+.btn-tasa-vis:hover { opacity: .75; }
+.btn-tasa-vis.oculta {
+  background: #FEE2E2;
+  color: #991B1B;
+  border-color: #FCA5A5;
+}
+
 .tot-der { min-width: 320px; }
 
 .tabla-totales {
@@ -772,6 +795,8 @@ body {
     color: #444 !important;
     font-style: italic;
   }
+
+  #documento.sin-tasa .tot-izq { visibility: hidden !important; }
 
   @page {
     size: A4 portrait;

@@ -73,8 +73,42 @@ body {
 .btn-agregar { background: #28A745; color: #fff; }
 .btn-nota    { background: #8C6A00; color: #fff; }
 .btn-tasa    { background: #5A3EA1; color: #fff; }
-.btn-pdf     { background: #E85421; color: #fff; }
-.btn-html    { background: #0E7490; color: #fff; }
+.btn-opciones  { background: #4A5568; color: #fff; }
+
+/* Export dropdown */
+.export-wrap { position: relative; }
+.btn-exportar { background: #E85421; color: #fff; }
+
+.export-menu {
+  display: none;
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  background: #fff;
+  border: 1px solid #D8E4F2;
+  border-radius: 7px;
+  box-shadow: 0 6px 20px rgba(0,0,0,.18);
+  min-width: 170px;
+  z-index: 1200;
+  overflow: hidden;
+}
+.export-menu.visible { display: block; }
+
+.export-item {
+  display: block;
+  width: 100%;
+  padding: 10px 16px;
+  text-align: left;
+  border: none;
+  background: transparent;
+  font-size: 13px;
+  font-family: var(--fuente);
+  cursor: pointer;
+  color: #333;
+  transition: background .1s;
+}
+.export-item + .export-item { border-top: 1px solid #F0F3F8; }
+.export-item:hover { background: #F0F5FB; color: var(--azul); }
 
 /* =============================================
    DOCUMENTO / PÁGINA
@@ -435,27 +469,91 @@ body {
 }
 .tasa-val:focus { background: #FFF9D6; border-radius: 2px; }
 
-.btn-tasa-vis {
-  display: inline-block;
-  margin-top: 6px;
-  font-size: 10.5px;
-  font-weight: bold;
-  padding: 2px 9px;
-  border-radius: 10px;
-  border: 1px solid #93C5FD;
-  background: #DBEAFE;
-  color: #1D4ED8;
+/* =============================================
+   MODAL OPCIONES DE IMPRESIÓN
+   ============================================= */
+.modal-opciones-card {
+  width: 460px;
+  max-height: 82vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-opc-body {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.opc-seccion {
+  padding: 16px 22px;
+  border-bottom: 1px solid #EEF0F4;
+}
+
+.opc-sec-titulo {
+  font-size: 10px;
+  font-weight: 800;
+  color: #8A95A3;
+  letter-spacing: .9px;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+
+.opc-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 0;
+}
+.opc-item + .opc-item { border-top: 1px solid #F4F6FA; }
+
+.opc-item-num {
+  font-size: 11.5px;
+  color: #9AAFC5;
+  flex-shrink: 0;
+  width: 18px;
+  text-align: right;
+}
+
+.opc-item-label {
+  flex: 1;
+  font-size: 13px;
+  color: #333;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.opc-toggle {
+  flex-shrink: 0;
+  min-width: 80px;
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 12px;
+  border: 1px solid;
   cursor: pointer;
   font-family: var(--fuente);
-  transition: opacity .12s;
-  vertical-align: middle;
+  text-align: center;
+  transition: background .12s, color .12s, border-color .12s;
 }
-.btn-tasa-vis:hover { opacity: .75; }
-.btn-tasa-vis.oculta {
-  background: #FEE2E2;
-  color: #991B1B;
-  border-color: #FCA5A5;
+.opc-toggle-on  { background: #D1FAE5; color: #065F46; border-color: #6EE7B7; }
+.opc-toggle-off { background: #FEE2E2; color: #991B1B; border-color: #FCA5A5; }
+.opc-toggle:hover { filter: brightness(.93); }
+
+.opc-nota-wrap {
+  padding: 10px 22px 12px;
+  font-size: 11.5px;
+  color: #7A8899;
+  font-style: italic;
+  border-top: 1px solid #EEF0F4;
 }
+
+/* ── Fila oculta en pantalla (indicador visual) ── */
+.fila-oculta .td-num,
+.fila-oculta .td-det,
+.fila-oculta .td-cantidad,
+.fila-oculta .td-monto { color: #C0C8D0 !important; font-style: italic; }
 
 .tot-der { min-width: 320px; }
 
@@ -797,6 +895,7 @@ body {
   }
 
   #documento.sin-tasa .tot-izq { visibility: hidden !important; }
+  .fila-oculta td { visibility: hidden !important; }
 
   @page {
     size: A4 portrait;

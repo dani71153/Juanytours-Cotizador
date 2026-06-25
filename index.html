@@ -27,8 +27,14 @@
       <button class="btn-ctrl btn-agregar"  onclick="agregarFila()">&#43; Servicio</button>
       <button class="btn-ctrl btn-nota"     onclick="agregarNota()">&#43; Nota</button>
       <button class="btn-ctrl btn-tasa"     onclick="TasaCambio.mostrarEditor()">&#x1F4B1; Tasa</button>
-      <button class="btn-ctrl btn-pdf"      onclick="exportarPDF()">&#x2B07; PDF</button>
-      <button class="btn-ctrl btn-html"     onclick="exportarHTML()">&#x1F4C4; HTML</button>
+      <button class="btn-ctrl btn-opciones" onclick="abrirModalOpciones()">&#x2699; Opciones</button>
+      <div class="export-wrap" id="export-wrap">
+        <button class="btn-ctrl btn-exportar" onclick="toggleExportMenu(event)">&#x2B07; Exportar &#x25BE;</button>
+        <div class="export-menu" id="export-menu">
+          <button class="export-item" onclick="exportarPDF(); cerrarExportMenu()">&#x1F4C4; PDF</button>
+          <button class="export-item" onclick="exportarHTML(); cerrarExportMenu()">&#x1F4D1; HTML editable</button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -160,8 +166,6 @@
           <span contenteditable="true" id="doc-tasa" class="tasa-val">60.65</span>
           <span id="tasa-indicador" class="tasa-indicador tasa-ind-oficial no-print">· tasa oficial</span>
         </p>
-        <button class="btn-tasa-vis no-print" id="btn-tasa-vis"
-                onclick="toggleOcultarTasa()">Ocultar en PDF</button>
       </div>
       <div class="tot-der">
         <table class="tabla-totales">
@@ -263,6 +267,45 @@
       <div class="modal-footer">
         <button class="btn-modal-cancelar" onclick="TasaCambio.cerrarEditor()">Cancelar</button>
         <button class="btn-modal-ok"       onclick="TasaCambio.confirmarEditor()">Aplicar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== MODAL OPCIONES DE IMPRESIÓN ===== -->
+  <div id="modal-opciones" class="modal-overlay no-print"
+       onclick="if(event.target===this) cerrarModalOpciones()">
+    <div class="modal-card modal-opciones-card">
+      <div class="modal-header">
+        <span>&#x2699; Opciones de impresión</span>
+        <button class="modal-cerrar" onclick="cerrarModalOpciones()">&#215;</button>
+      </div>
+      <div class="modal-opc-body">
+
+        <!-- Sección: Generales -->
+        <div class="opc-seccion">
+          <div class="opc-sec-titulo">Elementos generales</div>
+          <div class="opc-item">
+            <span class="opc-item-label">Tasa de cambio</span>
+            <button class="opc-toggle opc-toggle-on" id="opc-toggle-tasa"
+                    onclick="toggleOcultarTasa(); actualizarToggleTasa()"></button>
+          </div>
+        </div>
+
+        <!-- Sección: Servicios -->
+        <div class="opc-seccion">
+          <div class="opc-sec-titulo">Servicios</div>
+          <div id="opc-lista-servicios">
+            <!-- Generado por renderModalOpciones() -->
+          </div>
+        </div>
+
+      </div>
+      <div class="opc-nota-wrap">
+        &#x1F4A1; Los servicios ocultos no aparecen en el PDF pero se incluyen en el total.
+      </div>
+      <div class="modal-footer">
+        <button class="btn-modal-cancelar" onclick="cerrarModalOpciones()">Cerrar</button>
+        <button class="btn-modal-ok"       onclick="guardarManual(); cerrarModalOpciones()">&#x1F4BE; Guardar</button>
       </div>
     </div>
   </div>

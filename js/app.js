@@ -287,10 +287,8 @@ function restaurarEstado(datos) {
   }
 
   // Restaurar visibilidad de tasa en PDF
-  const docEl  = document.getElementById('documento');
-  const btnVis = document.getElementById('btn-tasa-vis');
+  const docEl = document.getElementById('documento');
   if (docEl)  docEl.classList.toggle('sin-tasa', !!datos.ocultarTasa);
-  if (btnVis) _actualizarBtnTasaVis(btnVis, !!datos.ocultarTasa);
 
   calcularTotales();
 }
@@ -324,10 +322,8 @@ function iniciarEstadoVacio(numero = null) {
     TasaCambio.setFija(null);
   }
 
-  const docEl2  = document.getElementById('documento');
-  const btnVis2 = document.getElementById('btn-tasa-vis');
-  if (docEl2)  docEl2.classList.remove('sin-tasa');
-  if (btnVis2) _actualizarBtnTasaVis(btnVis2, false);
+  const docEl2 = document.getElementById('documento');
+  if (docEl2) docEl2.classList.remove('sin-tasa');
 
   calcularTotales();
   TabManager.actualizarNumero(num);
@@ -612,6 +608,7 @@ function renderFilas() {
   cot.items.forEach((fila, idx) => {
     const tr      = document.createElement('tr');
     tr.dataset.id = fila.id;
+    if (fila.type === 'item' && fila.visible === false) tr.classList.add('fila-oculta');
     const isFirst = idx === 0;
     const isLast  = idx === cot.items.length - 1;
     const btnOrden = `
@@ -753,18 +750,85 @@ function cambiarTipoDoc(valor) {
 // =============================================
 function toggleOcultarTasa() {
   const doc = document.getElementById('documento');
-  const btn = document.getElementById('btn-tasa-vis');
-  if (!doc || !btn) return;
-  const oculta = !doc.classList.contains('sin-tasa');
-  doc.classList.toggle('sin-tasa', oculta);
-  _actualizarBtnTasaVis(btn, oculta);
+  if (!doc) return;
+  doc.classList.toggle('sin-tasa');
   TabManager.marcarSinGuardar();
 }
 
-function _actualizarBtnTasaVis(btn, oculta) {
-  btn.textContent = oculta ? 'Mostrar en PDF' : 'Ocultar en PDF';
-  btn.title       = oculta ? 'La tasa está oculta en el PDF — clic para mostrar' : 'Ocultar tasa de cambio en el PDF';
-  btn.classList.toggle('oculta', oculta);
+function actualizarToggleTasa() {
+  const btn   = document.getElementById('opc-toggle-tasa');
+  if (!btn) return;
+  const oculta = document.getElementById('documento')?.classList.contains('sin-tasa') || false;
+  btn.textContent = oculta ? 'Oculto' : 'Visible';
+  btn.className   = `opc-toggle ${oculta ? 'opc-toggle-off' : 'opc-toggle-on'}`;
+}
+
+// =============================================
+//  MODAL OPCIONES DE IMPRESIÓN
+// =============================================
+function abrirModalOpciones() {
+  renderModalOpciones();
+  const modal = document.getElementById('modal-opciones');
+  if (modal) modal.classList.add('visible');
+}
+
+function cerrarModalOpciones() {
+  const modal = document.getElementById('modal-opciones');
+  if (modal) modal.classList.remove('visible');
+}
+
+function renderModalOpciones() {
+  // Toggle de tasa
+  actualizarToggleTasa();
+
+  // Lista de servicios
+  const lista  = document.getElementById('opc-lista-servicios');
+  if (!lista) return;
+
+  const items = cot.items.filter(f => f.type === 'item');
+  if (!items.length) {
+    lista.innerHTML = '<p style="padding:8px 0;color:#aaa;font-size:12.5px">No hay servicios agregados.</p>';
+    return;
+  }
+
+  lista.innerHTML = '';
+  items.forEach((f, idx) => {
+    const visible = f.visible !== false;
+    const desc    = f.desc
+      ? (f.desc.length > 42 ? f.desc.slice(0, 42) + '…' : f.desc)
+      : '(sin descripción)';
+    const div = document.createElement('div');
+    div.className = 'opc-item';
+    div.innerHTML =
+      `<span class="opc-item-num">${idx + 1}</span>` +
+      `<span class="opc-item-label" title="${escHTML(f.desc || '')}">${escHTML(desc)}</span>` +
+      `<button class="opc-toggle ${visible ? 'opc-toggle-on' : 'opc-toggle-off'}"
+               onclick="toggleVisibilidadFila(${f.id})">
+         ${visible ? 'Visible' : 'Oculto'}
+       </button>`;
+    lista.appendChild(div);
+  });
+}
+
+function toggleVisibilidadFila(id) {
+  const fila = cot.items.find(f => f.id === id);
+  if (!fila || fila.type !== 'item') return;
+  fila.visible = fila.visible === false;  // false→true, true/undefined→false
+  renderFilas();
+  renderModalOpciones();
+  TabManager.marcarSinGuardar();
+}
+
+// =============================================
+//  DROPDOWN EXPORTAR
+// =============================================
+function toggleExportMenu(e) {
+  e.stopPropagation();
+  document.getElementById('export-menu')?.classList.toggle('visible');
+}
+
+function cerrarExportMenu() {
+  document.getElementById('export-menu')?.classList.remove('visible');
 }
 
 // =============================================
@@ -808,6 +872,9 @@ function iniciarListeners() {
   document.getElementById('tasa-indicador')?.addEventListener('click', () => {
     if (typeof TasaCambio !== 'undefined') TasaCambio.mostrarEditor();
   });
+
+  // Cerrar dropdown exportar al hacer clic fuera
+  document.addEventListener('click', () => cerrarExportMenu());
 
   // Antes de cerrar: guardar sesión y borrador del estado actual
   window.addEventListener('beforeunload', () => {
@@ -1180,8 +1247,9 @@ function _htmlFilas(items, itbisPct) {
       </tr>\n`;
     } else {
       numItem++;
-      const tipo = f.tipo || 'exento';
-      html += `      <tr data-tipo="${tipo}">
+      const tipo    = f.tipo || 'exento';
+      const visible = f.visible !== false;
+      html += `      <tr data-tipo="${tipo}"${visible ? '' : ' class="fila-oculta"'}>
         <td class="td-num">${numItem}</td>
         <td class="td-det" contenteditable="true" data-field="desc" data-placeholder="Descripci&oacute;n del servicio">${escHTML(f.desc || '')}</td>
         <td class="td-cantidad" contenteditable="true" data-field="cantidad" data-placeholder="1">${f.cantidad || 1}</td>

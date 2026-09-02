@@ -4,9 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Cotizador — Juanytours</title>
-  <link rel="stylesheet" href="css/estilos.css?v=5" />
-  <link rel="stylesheet" href="css/biblioteca.css?v=5" />
-  <link rel="stylesheet" href="css/plantilla-laps.css?v=5" />
+  <link rel="stylesheet" href="css/estilos.css?v=6" />
+  <link rel="stylesheet" href="css/biblioteca.css?v=6" />
+  <link rel="stylesheet" href="css/plantilla-laps.css?v=6" />
 </head>
 <body>
 
@@ -19,7 +19,7 @@
 
     <!-- Acciones: vista Biblioteca -->
     <div class="bc-acciones" id="bc-bib-acciones">
-      <button class="btn-ctrl btn-nuevo" onclick="TabManager.nuevaTab()">&#43; Nueva Cotización</button>
+      <button class="btn-ctrl btn-nuevo" onclick="nuevaCotizacion()">&#43; Nueva Cotización</button>
     </div>
 
     <!-- Acciones: vista Editor -->
@@ -76,6 +76,26 @@
   <!-- El interior lo genera Plantilla.interior() desde js/plantilla.js:
        es el mismo markup que usa la exportación a HTML. -->
   <div id="documento" class="pagina" style="display:none"></div>
+
+  <!-- ===== MODAL: ELEGIR EMPRESA ===== -->
+  <div id="modal-perfil" class="modal-overlay no-print"
+       onclick="if(event.target===this) cerrarModalPerfil()">
+    <div class="modal-card modal-perfil-card">
+      <div class="modal-header">
+        <span>&#x1F3E2; &iquest;Para cu&aacute;l empresa?</span>
+        <button class="modal-cerrar" onclick="cerrarModalPerfil()">&#215;</button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-desc">Elige la empresa: define los datos del encabezado, la informaci&oacute;n bancaria y la plantilla del documento.</p>
+        <div id="perfil-opciones" class="perfil-opciones">
+          <!-- Generado por nuevaCotizacion() -->
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-modal-cancelar" onclick="cerrarModalPerfil()">Cancelar</button>
+      </div>
+    </div>
+  </div>
 
   <!-- ===== MODAL TASA DE CAMBIO ===== -->
   <div id="modal-tasa" class="modal-overlay no-print"
@@ -328,13 +348,13 @@
   <!-- ===== TOAST DE GUARDADO ===== -->
   <div id="toast-guardado" class="toast-guardado no-print" style="display:none">&#x2713; Guardado</div>
 
-  <script src="data/empresa.js?v=5"></script>
-  <script src="shared/tasa.js?v=5"></script>
-  <script src="database/db.js?v=5"></script>
-  <script src="database/cotizaciones.js?v=5"></script>
-  <script src="permanencia/sesion.js?v=5"></script>
-  <script src="permanencia/borrador.js?v=5"></script>
-  <script src="js/plantilla.js?v=5"></script>
-  <script src="js/app.js?v=5"></script>
+  <script src="data/empresa.js?v=6"></script>
+  <script src="shared/tasa.js?v=6"></script>
+  <script src="database/db.js?v=6"></script>
+  <script src="database/cotizaciones.js?v=6"></script>
+  <script src="permanencia/sesion.js?v=6"></script>
+  <script src="permanencia/borrador.js?v=6"></script>
+  <script src="js/plantilla.js?v=6"></script>
+  <script src="js/app.js?v=6"></script>
 </body>
 </html>

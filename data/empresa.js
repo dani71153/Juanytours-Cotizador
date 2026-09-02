@@ -30,8 +30,8 @@ window.PERFILES = {
       ciudad:    "República Dominicana",
       telefono:  "809-771-2790",
       email:     "reservas@juanytours.com",
-      // Ruta relativa al logo (está en la carpeta padre)
-      logo:      "../Logo de Juanytours nav-bar sin fondo.png"
+      // Ruta relativa a index.html (el logo está junto a él, en la raíz)
+      logo:      "Logo de Juanytours nav-bar sin fondo.png"
     },
 
     banco: {
@@ -74,8 +74,7 @@ window.PERFILES = {
       ciudad:    "Santo Domingo, R.D.",
       telefono:  "809 770-1279",
       email:     "lapsrdgerencia@gmail.com",
-      // Pon aquí la ruta del logo de LAPS cuando lo tengas
-      logo:      "../Logo de LAPS.png"
+      logo:      "Logo de LAPS.png"
     },
 
     banco: {

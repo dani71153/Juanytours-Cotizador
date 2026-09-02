@@ -66,25 +66,86 @@ const Perfiles = {
     return id;
   },
 
-  // Cambia de empresa: recarga datos, plantilla y documento
+  // Deja el perfil activo y vuelve a montar el documento con su
+  // plantilla. No conserva lo escrito: eso lo decide quien llama.
+  _aplicar(id) {
+    localStorage.setItem(this.KEY, id);
+    this._resolver(id);
+    EmpresaCfg.aplicarGuardado();
+    montarDocumento();
+    poblarEmpresa(window.EMPRESA);
+    iniciarListenersDocumento();
+  },
+
+  // Cambia de empresa conservando lo que el usuario ya escribió
   async cambiar(id) {
     if (!window.PERFILES?.[id] || id === this.activoId()) return;
     await TabManager._autoGuardar();
 
-    localStorage.setItem(this.KEY, id);
-    this._resolver(id);
-    EmpresaCfg.aplicarGuardado();
-
-    const estado = capturarEstado();     // conservar lo que el usuario ya escribió
-    montarDocumento();
-    poblarEmpresa(window.EMPRESA);
-    iniciarListenersDocumento();
+    const estado = capturarEstado();
+    this._aplicar(id);
     restaurarEstado(estado);
 
     renderModalOpciones();
     mostrarToast('✓ Empresa: ' + (window.EMPRESA.nombre || id));
+  },
+
+  // Deja listo un perfil para una cotización nueva (sin estado previo)
+  seleccionar(id) {
+    if (!window.PERFILES?.[id]) return;
+    this._aplicar(id);
+  },
+
+  // Al abrir una cotización guardada: si se creó con otra empresa,
+  // se cambia para que salga con su plantilla original.
+  asegurar(id) {
+    if (!id || !window.PERFILES?.[id] || id === this.activoId()) return false;
+    this._aplicar(id);
+    return true;
   }
 };
+
+// =============================================
+//  MODAL: ELEGIR EMPRESA AL CREAR UNA COTIZACIÓN
+// =============================================
+function nuevaCotizacion() {
+  const perfiles = Perfiles.lista();
+
+  // Con una sola empresa configurada no tiene sentido preguntar
+  if (perfiles.length < 2) { TabManager.nuevaTab(); return; }
+
+  const cont = document.getElementById('perfil-opciones');
+  if (!cont) { TabManager.nuevaTab(); return; }
+
+  const activo = Perfiles.activoId();
+  cont.innerHTML = perfiles.map(p => `
+    <button class="perfil-opcion${p.id === activo ? ' perfil-opcion-activa' : ''}"
+            onclick="crearCotizacionCon('${p.id}')">
+      <span class="po-nombre">${escHTML(p.nombre)}</span>
+      <span class="po-desc">${p.plantilla === 'laps'
+        ? 'Logo centrado, columnas UD. M y TOTAL, pie de firmas'
+        : 'Logo a la izquierda, excento/gravado y total en USD'}</span>
+      ${p.id === activo ? '<span class="po-badge">Última usada</span>' : ''}
+    </button>`).join('');
+
+  document.getElementById('modal-perfil')?.classList.add('visible');
+}
+
+function cerrarModalPerfil() {
+  document.getElementById('modal-perfil')?.classList.remove('visible');
+}
+
+async function crearCotizacionCon(id) {
+  cerrarModalPerfil();
+
+  // Guardar la cotización abierta antes de tocar el documento:
+  // seleccionar() lo remonta y perderíamos lo que hubiera dentro.
+  await TabManager._autoGuardar();
+
+  if (id !== Perfiles.activoId()) Perfiles.seleccionar(id);
+
+  await TabManager.nuevaTab(null, null, true);
+}
 
 function cambiarPerfil(id) { Perfiles.cambiar(id); }
 
@@ -367,8 +428,11 @@ const TabManager = {
   },
 
   // Crear nueva pestaña de cotización
-  async nuevaTab(datos = null, dbId = null) {
-    await this._autoGuardar();
+  // yaGuardado: quien llama ya autoguardó la pestaña activa. Hace falta
+  // cuando el documento se remontó antes (cambio de empresa), porque
+  // entonces capturarEstado() leería un documento ya vaciado.
+  async nuevaTab(datos = null, dbId = null, yaGuardado = false) {
+    if (!yaGuardado) await this._autoGuardar();
 
     const tabId  = 'tab-' + Date.now();
     const numero = datos?.numero || _generarNumero();
@@ -428,6 +492,7 @@ const TabManager = {
     } else {
       this._modoEditor(true);
       if (datosIniciales) {
+        Perfiles.asegurar(datosIniciales.perfil);   // plantilla con la que se creó
         restaurarEstado(datosIniciales);
       } else {
         // Tab restaurado de sesión: cargar desde IndexedDB si tiene dbId
@@ -435,7 +500,11 @@ const TabManager = {
         if (tab?.dbId) {
           try {
             const reg = await CotDB.obtener(tab.dbId);
-            if (reg) { restaurarEstado(reg.datos); return; }
+            if (reg) {
+              Perfiles.asegurar(reg.datos?.perfil);
+              restaurarEstado(reg.datos);
+              return;
+            }
           } catch (e) {
             console.warn('[Tab] Error cargando desde DB:', e);
           }

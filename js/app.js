@@ -36,8 +36,13 @@ const Perfiles = {
   KEY: 'jt_perfil_activo',
 
   lista() {
-    return Object.entries(window.PERFILES || {})
-      .map(([id, p]) => ({ id, nombre: p.nombre || id, plantilla: p.plantilla || 'clasica' }));
+    return Object.entries(window.PERFILES || {}).map(([id, p]) => ({
+      id,
+      nombre:    p.nombre || id,
+      plantilla: p.plantilla || 'clasica',
+      logo:      p.empresa?.logo || '',
+      razon:     p.empresa?.nombre || ''
+    }));
   },
 
   activoId() {
@@ -118,15 +123,29 @@ function nuevaCotizacion() {
   if (!cont) { TabManager.nuevaTab(); return; }
 
   const activo = Perfiles.activoId();
-  cont.innerHTML = perfiles.map(p => `
+  cont.innerHTML = perfiles.map(p => {
+    const inicial = (p.nombre || '?').trim().charAt(0).toUpperCase();
+    const marca = p.logo
+      ? `<img src="${escHTML(p.logo)}" alt="" onerror="this.remove()" />
+         <span class="po-inicial">${escHTML(inicial)}</span>`
+      : `<span class="po-inicial">${escHTML(inicial)}</span>`;
+    const desc = p.plantilla === 'laps'
+      ? 'Columnas UD. M y TOTAL &middot; pie de firmas'
+      : 'Excento / gravado &middot; total en USD';
+    return `
     <button class="perfil-opcion${p.id === activo ? ' perfil-opcion-activa' : ''}"
             onclick="crearCotizacionCon('${p.id}')">
-      <span class="po-nombre">${escHTML(p.nombre)}</span>
-      <span class="po-desc">${p.plantilla === 'laps'
-        ? 'Logo centrado, columnas UD. M y TOTAL, pie de firmas'
-        : 'Logo a la izquierda, excento/gravado y total en USD'}</span>
-      ${p.id === activo ? '<span class="po-badge">Última usada</span>' : ''}
-    </button>`).join('');
+      <span class="po-marca">${marca}</span>
+      <span class="po-texto">
+        <span class="po-fila">
+          <span class="po-nombre">${escHTML(p.nombre)}</span>
+          ${p.id === activo ? '<span class="po-badge">Última usada</span>' : ''}
+        </span>
+        <span class="po-desc">${desc}</span>
+      </span>
+      <span class="po-flecha">&#8250;</span>
+    </button>`;
+  }).join('');
 
   document.getElementById('modal-perfil')?.classList.add('visible');
 }

@@ -307,6 +307,19 @@
           </div>
 
           <div class="opc-seccion">
+            <div class="opc-sec-titulo">Bloque bancario</div>
+            <div class="opc-item">
+              <span class="opc-item-label">IBAN <em class="opc-hint">(ambas cuentas)</em></span>
+              <button class="opc-toggle" id="opc-toggle-iban" onclick="toggleOpcion('iban')"></button>
+            </div>
+            <div class="opc-item">
+              <span class="opc-item-label">SWIFT</span>
+              <button class="opc-toggle" id="opc-toggle-swift" onclick="toggleOpcion('swift')"></button>
+            </div>
+            <p class="opc-explica">Solo hacen falta para transferencias internacionales. Al ocultarlos, la tabla de cuentas se reacomoda sola.</p>
+          </div>
+
+          <div class="opc-seccion">
             <div class="opc-sec-titulo">Totales</div>
             <div class="opc-item">
               <span class="opc-item-label">Tasa de cambio</span>

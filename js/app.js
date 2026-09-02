@@ -65,11 +65,11 @@ function renderBanco(ba) {
   const c  = document.getElementById('bloque-cuentas');
   if (!ok) { c.innerHTML = ''; return; }
   c.innerHTML = `
-    <div class="pc-celda"><span class="pc-label">${ba.cuentaUSDLabel||'CUENTA USD AHORRO'}:</span> ${ba.cuentaUSD||''}</div>
-    <div class="pc-celda"><span class="pc-label">IBAN:</span> ${ba.ibanUSD||''}</div>
+    <div class="pc-celda pc-cuenta"><span class="pc-label">${ba.cuentaUSDLabel||'CUENTA USD AHORRO'}:</span> ${ba.cuentaUSD||''}</div>
+    <div class="pc-celda pc-iban"><span class="pc-label">IBAN:</span> ${ba.ibanUSD||''}</div>
     <div class="pc-swift" style="grid-row:1/3"><span class="pc-label">SWIFT:</span><span>${ba.swift||''}</span></div>
-    <div class="pc-celda" style="border-bottom:none"><span class="pc-label">${ba.cuentaDOPLabel||'CUENTA DOP CORRIENTE'}:</span> ${ba.cuentaDOP||''}</div>
-    <div class="pc-celda" style="border-bottom:none"><span class="pc-label">IBAN:</span> ${ba.ibanDOP||''}</div>`;
+    <div class="pc-celda pc-cuenta" style="border-bottom:none"><span class="pc-label">${ba.cuentaDOPLabel||'CUENTA DOP CORRIENTE'}:</span> ${ba.cuentaDOP||''}</div>
+    <div class="pc-celda pc-iban" style="border-bottom:none"><span class="pc-label">IBAN:</span> ${ba.ibanDOP||''}</div>`;
 }
 
 // =============================================
@@ -159,7 +159,7 @@ function restablecerEmpresaOpciones() {
 //  documento: se atenúa en pantalla y desaparece
 //  al imprimir / exportar. El dato nunca se borra.
 // =============================================
-const OPC_VIS = ['tasa', 'numero', 'ref', 'ncf', 'excento', 'gravado', 'itbis'];
+const OPC_VIS = ['tasa', 'numero', 'ref', 'ncf', 'excento', 'gravado', 'itbis', 'iban', 'swift'];
 
 // Lee el estado de visibilidad actual desde las clases del documento
 function leerOpcionesVis() {
@@ -1240,7 +1240,8 @@ body{padding-top:52px!important;background:#DEE6EF;}
 .exp-btn-print{background:#E85421;color:#fff;}
 .exp-btn-print:hover{opacity:.85;}
 .sin-tasa .tot-izq,.sin-numero .doc-numero-wrap,.sin-ref .fr-fila-ref,.sin-ncf .cli-fila-ncf,
-.sin-excento .tot-fila-excento,.sin-gravado .tot-fila-gravado,.sin-itbis .tot-fila-itbis{opacity:.3;}
+.sin-excento .tot-fila-excento,.sin-gravado .tot-fila-gravado,.sin-itbis .tot-fila-itbis,
+.sin-iban .pc-iban,.sin-swift .pc-swift{opacity:.3;}
 @media print{
   .exp-bar{display:none!important;}
   body{padding-top:0!important;background:#fff!important;}
@@ -1248,6 +1249,12 @@ body{padding-top:52px!important;background:#DEE6EF;}
   .sin-ncf .cli-fila-ncf{visibility:hidden!important;opacity:1!important;}
   .sin-excento .tot-fila-excento,.sin-gravado .tot-fila-gravado,
   .sin-itbis .tot-fila-itbis{display:none!important;}
+  .sin-iban .pc-iban,.sin-swift .pc-swift{display:none!important;}
+  .sin-iban .pago-cuentas{grid-template-columns:1fr auto!important;}
+  .sin-swift .pago-cuentas{grid-template-columns:1fr 1fr!important;}
+  .sin-iban.sin-swift .pago-cuentas{grid-template-columns:1fr!important;}
+  .sin-swift .pc-iban{border-right:none!important;}
+  .sin-iban.sin-swift .pc-cuenta{border-right:none!important;}
 }
   </style>
 </head>

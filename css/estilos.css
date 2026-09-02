@@ -906,6 +906,18 @@ body {
   .sin-gravado .tot-fila-gravado,
   .sin-itbis   .tot-fila-itbis { display: none !important; }
 
+  /* IBAN / SWIFT ocultos: se retiran del grid y las columnas se reacomodan */
+  .sin-iban  .pc-iban,
+  .sin-swift .pc-swift { display: none !important; }
+
+  .sin-iban            .pago-cuentas { grid-template-columns: 1fr auto !important; }
+  .sin-swift           .pago-cuentas { grid-template-columns: 1fr 1fr  !important; }
+  .sin-iban.sin-swift  .pago-cuentas { grid-template-columns: 1fr      !important; }
+
+  /* Sin SWIFT no debe quedar un borde suelto en el extremo derecho */
+  .sin-swift          .pc-iban   { border-right: none !important; }
+  .sin-iban.sin-swift .pc-cuenta { border-right: none !important; }
+
   @page {
     size: A4 portrait;
     margin: 12mm 10mm;
@@ -925,7 +937,9 @@ body {
   .sin-ncf     .cli-fila-ncf,
   .sin-excento .tot-fila-excento,
   .sin-gravado .tot-fila-gravado,
-  .sin-itbis   .tot-fila-itbis {
+  .sin-itbis   .tot-fila-itbis,
+  .sin-iban    .pc-iban,
+  .sin-swift   .pc-swift {
     opacity: .3;
     transition: opacity .15s;
   }
@@ -935,7 +949,9 @@ body {
   .sin-ncf     .cli-fila-ncf:hover,
   .sin-excento .tot-fila-excento:hover,
   .sin-gravado .tot-fila-gravado:hover,
-  .sin-itbis   .tot-fila-itbis:hover { opacity: .75; }
+  .sin-itbis   .tot-fila-itbis:hover,
+  .sin-iban    .pc-iban:hover,
+  .sin-swift   .pc-swift:hover { opacity: .75; }
 }
 
 /* =============================================

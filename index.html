@@ -4,8 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Cotizador — Juanytours</title>
-  <link rel="stylesheet" href="css/estilos.css" />
-  <link rel="stylesheet" href="css/biblioteca.css" />
+  <link rel="stylesheet" href="css/estilos.css?v=3" />
+  <link rel="stylesheet" href="css/biblioteca.css?v=3" />
 </head>
 <body>
 
@@ -127,7 +127,7 @@
           <span class="cli-val" contenteditable="true" id="doc-cli-tel" data-placeholder="Teléfono"></span>
         </p>
         <p>
-          <span class="cli-label">RNC:</span>
+          <span class="cli-label" id="lbl-cli-rnc">RNC:</span>
           <span class="cli-val" contenteditable="true" id="doc-cli-rnc" data-placeholder="RNC / Cédula"></span>
         </p>
       </div>
@@ -202,7 +202,7 @@
     <div class="seccion-pago">
       <div class="pago-head">
         <div class="ph-izq">Páguese A: <strong id="doc-pague-a"></strong></div>
-        <div class="ph-der">RNC: <strong id="doc-rnc-pago"></strong></div>
+        <div class="ph-der"><span id="lbl-rnc-pago">RNC</span>: <strong id="doc-rnc-pago"></strong></div>
       </div>
       <div class="pago-banco" id="doc-banco-nombre"></div>
       <div class="pago-cuentas" id="bloque-cuentas"></div>
@@ -294,27 +294,41 @@
             <div class="opc-sec-titulo">Encabezado</div>
             <div class="opc-item">
               <span class="opc-item-label">N&uacute;mero de documento <em class="opc-hint">(COT-001)</em></span>
-              <button class="opc-toggle" id="opc-toggle-numero" onclick="toggleOpcion('numero')"></button>
+              <button class="opc-toggle opc-toggle-on" id="opc-toggle-numero" onclick="toggleOpcion('numero')">Visible</button>
             </div>
             <div class="opc-item">
               <span class="opc-item-label">Referencia</span>
-              <button class="opc-toggle" id="opc-toggle-ref" onclick="toggleOpcion('ref')"></button>
+              <button class="opc-toggle opc-toggle-on" id="opc-toggle-ref" onclick="toggleOpcion('ref')">Visible</button>
             </div>
             <div class="opc-item">
               <span class="opc-item-label">NCF</span>
-              <button class="opc-toggle" id="opc-toggle-ncf" onclick="toggleOpcion('ncf')"></button>
+              <button class="opc-toggle opc-toggle-on" id="opc-toggle-ncf" onclick="toggleOpcion('ncf')">Visible</button>
             </div>
+          </div>
+
+          <div class="opc-seccion">
+            <div class="opc-sec-titulo">Identificaci&oacute;n del cliente</div>
+            <label class="opc-campo">
+              <span class="opc-campo-lbl">Etiqueta que se imprime antes del n&uacute;mero</span>
+              <select class="opc-inp" id="opc-sel-idcli" onchange="cambiarEtiquetaIdCliente(this.value)">
+                <option value="RNC">RNC</option>
+                <option value="C&Eacute;DULA">C&Eacute;DULA</option>
+                <option value="RNC / C&Eacute;DULA">RNC / C&Eacute;DULA</option>
+                <option value="PASAPORTE">PASAPORTE</option>
+              </select>
+            </label>
+            <p class="opc-explica">Cambia solo el r&oacute;tulo de esta cotizaci&oacute;n: usa C&Eacute;DULA cuando el cliente sea una persona f&iacute;sica.</p>
           </div>
 
           <div class="opc-seccion">
             <div class="opc-sec-titulo">Bloque bancario</div>
             <div class="opc-item">
               <span class="opc-item-label">IBAN <em class="opc-hint">(ambas cuentas)</em></span>
-              <button class="opc-toggle" id="opc-toggle-iban" onclick="toggleOpcion('iban')"></button>
+              <button class="opc-toggle opc-toggle-on" id="opc-toggle-iban" onclick="toggleOpcion('iban')">Visible</button>
             </div>
             <div class="opc-item">
               <span class="opc-item-label">SWIFT</span>
-              <button class="opc-toggle" id="opc-toggle-swift" onclick="toggleOpcion('swift')"></button>
+              <button class="opc-toggle opc-toggle-on" id="opc-toggle-swift" onclick="toggleOpcion('swift')">Visible</button>
             </div>
             <p class="opc-explica">Solo hacen falta para transferencias internacionales. Al ocultarlos, la tabla de cuentas se reacomoda sola.</p>
           </div>
@@ -323,19 +337,19 @@
             <div class="opc-sec-titulo">Totales</div>
             <div class="opc-item">
               <span class="opc-item-label">Tasa de cambio</span>
-              <button class="opc-toggle" id="opc-toggle-tasa" onclick="toggleOpcion('tasa')"></button>
+              <button class="opc-toggle opc-toggle-on" id="opc-toggle-tasa" onclick="toggleOpcion('tasa')">Visible</button>
             </div>
             <div class="opc-item">
               <span class="opc-item-label">Total excento</span>
-              <button class="opc-toggle" id="opc-toggle-excento" onclick="toggleOpcion('excento')"></button>
+              <button class="opc-toggle opc-toggle-on" id="opc-toggle-excento" onclick="toggleOpcion('excento')">Visible</button>
             </div>
             <div class="opc-item">
               <span class="opc-item-label">Total gravado</span>
-              <button class="opc-toggle" id="opc-toggle-gravado" onclick="toggleOpcion('gravado')"></button>
+              <button class="opc-toggle opc-toggle-on" id="opc-toggle-gravado" onclick="toggleOpcion('gravado')">Visible</button>
             </div>
             <div class="opc-item">
               <span class="opc-item-label">ITBIS</span>
-              <button class="opc-toggle" id="opc-toggle-itbis" onclick="toggleOpcion('itbis')"></button>
+              <button class="opc-toggle opc-toggle-on" id="opc-toggle-itbis" onclick="toggleOpcion('itbis')">Visible</button>
             </div>
             <div class="opc-atajos">
               <button class="opc-atajo" onclick="aplicarPresetTotales('uniforme')">Total uniforme</button>
@@ -361,10 +375,19 @@
 
           <div class="opc-seccion">
             <div class="opc-sec-titulo">Datos fiscales</div>
-            <label class="opc-campo">
-              <span class="opc-campo-lbl">RNC de la empresa</span>
-              <input type="text" class="opc-inp" id="opc-emp-rnc" placeholder="133029189" />
-            </label>
+            <div class="opc-campo-fila">
+              <label class="opc-campo" style="flex:0 0 130px">
+                <span class="opc-campo-lbl">Etiqueta</span>
+                <select class="opc-inp" id="opc-emp-rnc-lbl">
+                  <option value="RNC">RNC</option>
+                  <option value="C&Eacute;DULA">C&Eacute;DULA</option>
+                </select>
+              </label>
+              <label class="opc-campo">
+                <span class="opc-campo-lbl">N&uacute;mero de la empresa</span>
+                <input type="text" class="opc-inp" id="opc-emp-rnc" placeholder="133029189" />
+              </label>
+            </div>
             <label class="opc-campo">
               <span class="opc-campo-lbl">P&aacute;guese a</span>
               <input type="text" class="opc-inp" id="opc-ban-pague" placeholder="Juanytours" />
@@ -432,12 +455,12 @@
   <!-- ===== TOAST DE GUARDADO ===== -->
   <div id="toast-guardado" class="toast-guardado no-print" style="display:none">&#x2713; Guardado</div>
 
-  <script src="data/empresa.js"></script>
-  <script src="shared/tasa.js"></script>
-  <script src="database/db.js"></script>
-  <script src="database/cotizaciones.js"></script>
-  <script src="permanencia/sesion.js"></script>
-  <script src="permanencia/borrador.js"></script>
-  <script src="js/app.js"></script>
+  <script src="data/empresa.js?v=3"></script>
+  <script src="shared/tasa.js?v=3"></script>
+  <script src="database/db.js?v=3"></script>
+  <script src="database/cotizaciones.js?v=3"></script>
+  <script src="permanencia/sesion.js?v=3"></script>
+  <script src="permanencia/borrador.js?v=3"></script>
+  <script src="js/app.js?v=3"></script>
 </body>
 </html>

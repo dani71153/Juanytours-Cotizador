@@ -38,7 +38,9 @@ function poblarEmpresa(e) {
   setText('doc-empresa-dir',    em.direccion || '');
   setText('doc-empresa-ciudad', em.ciudad   || '');
   setText('doc-empresa-tel',    em.telefono ? 'Teléfono: ' + em.telefono : '');
-  setText('doc-empresa-rnc',    em.rnc      ? 'RNC: ' + em.rnc : '');
+  const etqRnc = em.rncLabel || 'RNC';
+  setText('doc-empresa-rnc',    em.rnc      ? etqRnc + ': ' + em.rnc : '');
+  setText('lbl-rnc-pago',       etqRnc);
 
   setText('doc-itbis-pct',    fi.itbisPorcentaje   || 18);
   setText('doc-moneda-ext',   fi.monedaExtranjera  || 'USD');
@@ -83,6 +85,7 @@ const EmpresaCfg = {
   // Campos editables: id del input → ruta dentro de window.EMPRESA
   CAMPOS: {
     'opc-emp-rnc':      ['empresa', 'rnc'],
+    'opc-emp-rnc-lbl':  ['empresa', 'rncLabel'],
     'opc-ban-pague':    ['banco',   'pagueA'],
     'opc-ban-nombre':   ['banco',   'nombre'],
     'opc-ban-usd-lbl':  ['banco',   'cuentaUSDLabel'],
@@ -212,6 +215,33 @@ function actualizarTogglesOpciones() {
       ? 'Modo total uniforme: sólo se imprime el TOTAL. El ITBIS se sigue calculando y está incluido en el monto.'
       : 'Lo que ocultes desaparece del PDF y del HTML exportado, pero se sigue sumando al TOTAL.';
   }
+}
+
+// ── Etiqueta de identificación del cliente (RNC / CÉDULA / …) ──
+// Es un valor por cotización: una persona física lleva cédula
+// y una empresa lleva RNC, aunque el documento sea el mismo.
+function leerEtiquetaIdCliente() {
+  const el = document.getElementById('lbl-cli-rnc');
+  return (el?.textContent || 'RNC:').replace(/:\s*$/, '').trim() || 'RNC';
+}
+
+function aplicarEtiquetaIdCliente(valor) {
+  const etq = (valor || 'RNC').trim() || 'RNC';
+  setText('lbl-cli-rnc', etq + ':');
+
+  const inp = document.getElementById('doc-cli-rnc');
+  if (inp) inp.dataset.placeholder = etq;
+
+  const sel = document.getElementById('opc-sel-idcli');
+  if (sel) {
+    // Si la etiqueta guardada no está entre las opciones, no forzar el select
+    if ([...sel.options].some(o => o.value === etq)) sel.value = etq;
+  }
+}
+
+function cambiarEtiquetaIdCliente(valor) {
+  aplicarEtiquetaIdCliente(valor);
+  TabManager.marcarSinGuardar();
 }
 
 // Compatibilidad con la versión anterior (botón de tasa)
@@ -402,6 +432,7 @@ function capturarEstado() {
     metodo:      getCE('doc-metodo'),
     notas:       getCE('doc-notas'),
     ocultar:     leerOpcionesVis(),
+    idCliente:   leerEtiquetaIdCliente(),
     // Se conserva por compatibilidad con cotizaciones guardadas antes
     ocultarTasa: document.getElementById('documento')?.classList.contains('sin-tasa') || false
   };
@@ -438,6 +469,7 @@ function restaurarEstado(datos) {
   // Restaurar visibilidad de elementos en PDF/exportación
   // (formato antiguo: sólo existía "ocultarTasa")
   aplicarOpcionesVis(datos.ocultar || { tasa: !!datos.ocultarTasa });
+  aplicarEtiquetaIdCliente(datos.idCliente || 'RNC');
 
   calcularTotales();
 }
@@ -472,6 +504,7 @@ function iniciarEstadoVacio(numero = null) {
   }
 
   aplicarOpcionesVis({});
+  aplicarEtiquetaIdCliente('RNC');
 
   calcularTotales();
   TabManager.actualizarNumero(num);
@@ -939,6 +972,9 @@ function renderModalOpciones() {
   // Toggles de visibilidad (encabezado + totales)
   actualizarTogglesOpciones();
 
+  // Etiqueta de identificación del cliente
+  aplicarEtiquetaIdCliente(leerEtiquetaIdCliente());
+
   // Datos de empresa / banco
   EmpresaCfg.poblarInputs();
 
@@ -1181,6 +1217,8 @@ async function exportarHTML() {
   const itbisPct = fi.itbisPorcentaje || 18;
   const cuentasHTML = document.getElementById('bloque-cuentas')?.innerHTML || '';
   const vis         = leerOpcionesVis();
+  const etqRncEmp   = emp.rncLabel || 'RNC';
+  const etqIdCli    = estado.idCliente || 'RNC';
   const clasesVis   = OPC_VIS.filter(k => vis[k]).map(k => ' sin-' + k).join('');
   const filasHTML   = _htmlFilas(estado.items, itbisPct);
 
@@ -1276,7 +1314,7 @@ body{padding-top:52px!important;background:#DEE6EF;}
         <p>${escHTML(emp.direccion || '')}</p>
         <p>${escHTML(emp.ciudad || '')}</p>
         ${emp.telefono ? `<p>Tel&eacute;fono: ${escHTML(emp.telefono)}</p>` : ''}
-        ${emp.rnc     ? `<p>RNC: ${escHTML(emp.rnc)}</p>` : ''}
+        ${emp.rnc     ? `<p>${escHTML(etqRncEmp)}: ${escHTML(emp.rnc)}</p>` : ''}
       </div>
     </div>
     <div class="enc-der">
@@ -1308,8 +1346,8 @@ body{padding-top:52px!important;background:#DEE6EF;}
          <span class="cli-val" contenteditable="true" data-placeholder="Nombre del cliente">${escHTML(estado.cliente || '')}</span></p>
       <p><span class="cli-label">TEL.:</span>
          <span class="cli-val" contenteditable="true" data-placeholder="Tel&eacute;fono">${escHTML(estado.telCli || '')}</span></p>
-      <p><span class="cli-label">RNC:</span>
-         <span class="cli-val" contenteditable="true" data-placeholder="RNC / C&eacute;dula">${escHTML(estado.rncCli || '')}</span></p>
+      <p><span class="cli-label">${escHTML(etqIdCli)}:</span>
+         <span class="cli-val" contenteditable="true" data-placeholder="${escHTML(etqIdCli)}">${escHTML(estado.rncCli || '')}</span></p>
     </div>
     <div class="cli-der">
       <p class="cli-tipo-doc" id="cli-tipo-doc-texto">${escHTML(tipoDoc)}</p>
@@ -1362,7 +1400,7 @@ ${filasHTML}    </tbody>
   <div class="seccion-pago">
     <div class="pago-head">
       <div class="ph-izq">P&aacute;guese A: <strong>${escHTML(ban.pagueA || emp.nombre || '')}</strong></div>
-      <div class="ph-der">RNC: <strong>${escHTML(emp.rnc || '')}</strong></div>
+      <div class="ph-der">${escHTML(etqRncEmp)}: <strong>${escHTML(emp.rnc || '')}</strong></div>
     </div>
     <div class="pago-banco">${escHTML(ban.nombre || '')}</div>
     <div class="pago-cuentas">${cuentasHTML}</div>

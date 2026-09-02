@@ -6,6 +6,8 @@ window.EMPRESA = {
   empresa: {
     nombre:    "Juanytours",
     rnc:       "133029189",
+    // Rótulo que se imprime antes del número: "RNC" o "CÉDULA"
+    rncLabel:  "RNC",
     direccion: "El Millón, Calle Caña Dulce",
     ciudad:    "República Dominicana",
     telefono:  "809-771-2790",

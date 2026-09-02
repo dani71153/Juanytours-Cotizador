@@ -19,11 +19,37 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (!emp) { alert('No se pudo cargar empresa.js'); return; }
 
   EmpresaCfg.aplicarGuardado();   // ← overrides de RNC / banco desde Opciones
+  montarDocumento();              // ← el markup viene de js/plantilla.js
   poblarEmpresa(emp);
-  iniciarListeners();
+  iniciarListeners();             // ← después de montar: engancha nodos del documento
   await _sincronizarContador();   // ← inicializa el contador de numeración
   await TabManager.init();
 });
+
+// =============================================
+//  MONTAJE DEL DOCUMENTO
+//  El markup vive en js/plantilla.js y lo comparten
+//  el editor y la exportación a HTML. Se monta una
+//  sola vez: después los valores se escriben campo a
+//  campo (setCE) para no perder el cursor al escribir.
+// =============================================
+function montarDocumento() {
+  const cont = document.getElementById('documento');
+  if (!cont) return;
+  if (typeof Plantilla === 'undefined') {
+    console.error('[Documento] No se pudo cargar js/plantilla.js');
+    return;
+  }
+  const E = window.EMPRESA || {};
+  cont.innerHTML = Plantilla.interior({
+    modo:    'editor',
+    estado:  {},
+    empresa: E.empresa,
+    banco:   E.banco,
+    fiscal:  E.fiscal,
+    logo:    E.empresa?.logo || ''
+  });
+}
 
 // =============================================
 //  DATOS DE EMPRESA
@@ -63,15 +89,8 @@ function poblarEmpresa(e) {
 }
 
 function renderBanco(ba) {
-  const ok = ba.cuentaUSD || ba.cuentaDOP || ba.ibanUSD || ba.ibanDOP;
-  const c  = document.getElementById('bloque-cuentas');
-  if (!ok) { c.innerHTML = ''; return; }
-  c.innerHTML = `
-    <div class="pc-celda pc-cuenta"><span class="pc-label">${ba.cuentaUSDLabel||'CUENTA USD AHORRO'}:</span> ${ba.cuentaUSD||''}</div>
-    <div class="pc-celda pc-iban"><span class="pc-label">IBAN:</span> ${ba.ibanUSD||''}</div>
-    <div class="pc-swift" style="grid-row:1/3"><span class="pc-label">SWIFT:</span><span>${ba.swift||''}</span></div>
-    <div class="pc-celda pc-cuenta" style="border-bottom:none"><span class="pc-label">${ba.cuentaDOPLabel||'CUENTA DOP CORRIENTE'}:</span> ${ba.cuentaDOP||''}</div>
-    <div class="pc-celda pc-iban" style="border-bottom:none"><span class="pc-label">IBAN:</span> ${ba.ibanDOP||''}</div>`;
+  const c = document.getElementById('bloque-cuentas');
+  if (c) c.innerHTML = Plantilla.cuentas(ba);
 }
 
 // =============================================
@@ -1209,25 +1228,28 @@ async function exportarHTML() {
   const numRaw   = estado.numero || 'cotizacion';
   const logoSrc  = await _logoABase64();
   const cssText  = _extractCSS();
-  const emp      = window.EMPRESA?.empresa || {};
-  const ban      = window.EMPRESA?.banco   || {};
-  const fi       = window.EMPRESA?.fiscal  || {};
-  const tipoDoc  = estado.tipoDoc || 'COTIZACIÓN';
-  const tasa     = typeof TasaCambio !== 'undefined' ? TasaCambio.get() : 60.65;
+  const E        = window.EMPRESA || {};
+  const fi       = E.fiscal || {};
   const itbisPct = fi.itbisPorcentaje || 18;
-  const cuentasHTML = document.getElementById('bloque-cuentas')?.innerHTML || '';
-  const vis         = leerOpcionesVis();
-  const etqRncEmp   = emp.rncLabel || 'RNC';
-  const etqIdCli    = estado.idCliente || 'RNC';
-  const clasesVis   = OPC_VIS.filter(k => vis[k]).map(k => ' sin-' + k).join('');
-  const filasHTML   = _htmlFilas(estado.items, itbisPct);
+  const tasa     = typeof TasaCambio !== 'undefined' ? TasaCambio.get() : 60.65;
+  const vis      = leerOpcionesVis();
+  const clasesVis = OPC_VIS.filter(k => vis[k]).map(k => ' sin-' + k).join('');
 
-  const tiposOpts = ['COTIZACIÓN','FACTURA DE CRÉDITO FISCAL','FACTURA','PROFORMA']
-    .map(t => `<option value="${t}"${t === tipoDoc ? ' selected' : ''}>${t}</option>`).join('');
+  // Mismo markup que el editor — ver js/plantilla.js
+  const documentoHTML = Plantilla.interior({
+    modo:      'export',
+    estado:    estado,
+    empresa:   E.empresa,
+    banco:     E.banco,
+    fiscal:    E.fiscal,
+    logo:      logoSrc,
+    tasa:      tasa,
+    filasHTML: Plantilla.filasExport(estado.items)
+  });
 
   const scriptInline = `(function(){
   var ITBIS=${itbisPct};
-  function pM(s){return parseFloat(String(s).replace(/[\\s,]/g,''))||0;}
+  function pM(s){return parseFloat(String(s).replace(/[\s,]/g,''))||0;}
   function fN(n){return Number(n).toLocaleString('es-DO',{minimumFractionDigits:2,maximumFractionDigits:2});}
   function sT(id,v){var el=document.getElementById(id);if(el)el.textContent=v;}
   window.calcTotales=function(){
@@ -1305,112 +1327,7 @@ body{padding-top:52px!important;background:#DEE6EF;}
   </div>
 </div>
 
-<div class="pagina${clasesVis}">
-  <div class="encabezado">
-    <div class="enc-izq">
-      ${logoSrc ? `<img src="${logoSrc}" alt="Logo" class="doc-logo"/>` : ''}
-      <div class="doc-empresa-datos">
-        <p class="empresa-nombre">${escHTML(emp.nombre || '')}</p>
-        <p>${escHTML(emp.direccion || '')}</p>
-        <p>${escHTML(emp.ciudad || '')}</p>
-        ${emp.telefono ? `<p>Tel&eacute;fono: ${escHTML(emp.telefono)}</p>` : ''}
-        ${emp.rnc     ? `<p>${escHTML(etqRncEmp)}: ${escHTML(emp.rnc)}</p>` : ''}
-      </div>
-    </div>
-    <div class="enc-der">
-      <div class="doc-numero-wrap">
-        <span class="doc-numero" contenteditable="true" id="doc-numero">${escHTML(numRaw)}</span>
-      </div>
-      <div class="doc-titulo-tipo">
-        <select id="sel-tipo-doc" class="sel-tipo" onchange="cambiarTipoDoc(this.value)">${tiposOpts}</select>
-        <span id="doc-titulo-texto" class="doc-titulo-texto">${escHTML(tipoDoc)}</span>
-      </div>
-      <div class="doc-fecha-ref">
-        <div class="fr-fila">
-          <span class="fr-label">FECHA:</span>
-          <input type="date" id="doc-fecha" class="inp-fecha" value="${escHTML(estado.fecha || '')}"/>
-        </div>
-        <div class="fr-fila fr-fila-ref">
-          <span class="fr-label">REFERENCIA:</span>
-          <span class="fr-val" contenteditable="true" data-placeholder="0">${escHTML(estado.ref || '')}</span>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <div class="linea-azul"></div>
-
-  <div class="seccion-cliente">
-    <div class="cli-izq">
-      <p><span class="cli-label">CLIENTE:</span>
-         <span class="cli-val" contenteditable="true" data-placeholder="Nombre del cliente">${escHTML(estado.cliente || '')}</span></p>
-      <p><span class="cli-label">TEL.:</span>
-         <span class="cli-val" contenteditable="true" data-placeholder="Tel&eacute;fono">${escHTML(estado.telCli || '')}</span></p>
-      <p><span class="cli-label">${escHTML(etqIdCli)}:</span>
-         <span class="cli-val" contenteditable="true" data-placeholder="${escHTML(etqIdCli)}">${escHTML(estado.rncCli || '')}</span></p>
-    </div>
-    <div class="cli-der">
-      <p class="cli-tipo-doc" id="cli-tipo-doc-texto">${escHTML(tipoDoc)}</p>
-      <p class="cli-fila-ncf"><span class="cli-label">NCF:</span>
-         <span class="cli-val" contenteditable="true" data-placeholder="0">${escHTML(estado.ncf || '')}</span></p>
-    </div>
-  </div>
-
-  <table class="tabla-servicios">
-    <thead>
-      <tr>
-        <th class="th-num">Cant.</th>
-        <th class="th-det">Detalles</th>
-        <th class="th-cantidad">Cantidad</th>
-        <th class="th-monto">Monto</th>
-        <th class="th-tipo">Tipo</th>
-      </tr>
-    </thead>
-    <tbody id="tabla-body">
-${filasHTML}    </tbody>
-  </table>
-
-  <div class="seccion-totales">
-    <div class="tot-izq">
-      <p class="tipo-cambio-texto">
-        Tipo de cambio Banco Central
-        ${escHTML(fi.monedaExtranjera || 'USD')} x
-        <span contenteditable="true" id="doc-tasa" class="tasa-val" oninput="calcTotales()">${tasa}</span>
-      </p>
-    </div>
-    <div class="tot-der">
-      <table class="tabla-totales">
-        <tr class="tot-fila-excento"><td class="tot-label">TOTAL EXCENTO</td><td class="tot-signo">$</td><td class="tot-val" id="tot-excento">0.00</td></tr>
-        <tr class="tot-fila-gravado"><td class="tot-label">TOTAL GRAVADO</td><td class="tot-signo">$</td><td class="tot-val" id="tot-gravado">0.00</td></tr>
-        <tr class="tot-fila-itbis"><td class="tot-label">ITBIS ${itbisPct}%</td><td class="tot-signo">$</td><td class="tot-val" id="tot-itbis">0.00</td></tr>
-        <tr class="tot-fila-dop">
-          <td class="tot-label"><strong>TOTAL ${escHTML(fi.monedaLocal || 'DOP')}</strong></td>
-          <td class="tot-signo"><strong>$</strong></td>
-          <td class="tot-val" id="tot-dop"><strong>0.00</strong></td>
-        </tr>
-        <tr class="tot-fila-usd">
-          <td class="tot-label"><strong>TOTAL ${escHTML(fi.monedaExtranjera || 'USD')}</strong></td>
-          <td class="tot-signo"><strong>$</strong></td>
-          <td class="tot-val" id="tot-usd"><strong>0.00</strong></td>
-        </tr>
-      </table>
-    </div>
-  </div>
-
-  <div class="seccion-pago">
-    <div class="pago-head">
-      <div class="ph-izq">P&aacute;guese A: <strong>${escHTML(ban.pagueA || emp.nombre || '')}</strong></div>
-      <div class="ph-der">${escHTML(etqRncEmp)}: <strong>${escHTML(emp.rnc || '')}</strong></div>
-    </div>
-    <div class="pago-banco">${escHTML(ban.nombre || '')}</div>
-    <div class="pago-cuentas">${cuentasHTML}</div>
-    <div class="pago-metodo">
-      <span>M&eacute;todo de pago:</span>
-      <span contenteditable="true" data-placeholder="Transferencia">${escHTML(estado.metodo || '')}</span>
-    </div>
-    <div class="pago-notas" contenteditable="true" data-placeholder="Notas adicionales...">${escHTML(estado.notas || '')}</div>
-  </div>
-</div>
+<div class="pagina${clasesVis}">${documentoHTML}</div>
 
 <script>${scriptInline}<` + `/script>
 </body>
@@ -1450,38 +1367,4 @@ function _extractCSS() {
     } catch(e) { /* cross-origin, skip */ }
   }
   return css;
-}
-
-function _htmlFilas(items, itbisPct) {
-  let html = '';
-  let numItem = 0;
-  items.forEach(f => {
-    if (f.type === 'nota') {
-      html += `      <tr class="tr-nota">
-        <td class="td-nota" colspan="4" contenteditable="true">${escHTML(f.texto || '')}</td>
-        <td></td>
-      </tr>\n`;
-    } else {
-      numItem++;
-      const tipo    = f.tipo || 'exento';
-      const visible = f.visible !== false;
-      html += `      <tr data-tipo="${tipo}"${visible ? '' : ' class="fila-oculta"'}>
-        <td class="td-num">${numItem}</td>
-        <td class="td-det" contenteditable="true" data-field="desc" data-placeholder="Descripci&oacute;n del servicio">${escHTML(f.desc || '')}</td>
-        <td class="td-cantidad" contenteditable="true" data-field="cantidad" data-placeholder="1">${f.cantidad || 1}</td>
-        <td class="td-monto" contenteditable="true" data-field="monto" data-placeholder="0.00">${formatNum(f.monto || 0)}</td>
-        <td class="td-tipo">
-          <select class="sel-tipo-item">
-            <option value="exento"${tipo === 'exento' ? ' selected' : ''}>Exento</option>
-            <option value="gravado"${tipo === 'gravado' ? ' selected' : ''}>Gravado</option>
-          </select>
-        </td>
-      </tr>\n`;
-    }
-  });
-  const totalItems = items.filter(f => f.type === 'item').length;
-  for (let x = totalItems; x < 3; x++) {
-    html += `      <tr class="tr-vacio"><td></td><td></td><td></td><td></td><td></td></tr>\n`;
-  }
-  return html;
 }

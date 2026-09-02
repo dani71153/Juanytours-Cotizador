@@ -104,7 +104,7 @@
             <span class="fr-label">FECHA:</span>
             <input type="date" id="doc-fecha" class="inp-fecha" />
           </div>
-          <div class="fr-fila">
+          <div class="fr-fila fr-fila-ref">
             <span class="fr-label">REFERENCIA:</span>
             <span class="fr-val" contenteditable="true" id="doc-ref" data-placeholder="0"></span>
           </div>
@@ -133,7 +133,7 @@
       </div>
       <div class="cli-der">
         <p class="cli-tipo-doc" id="cli-tipo-doc-texto">COTIZACIÓN</p>
-        <p>
+        <p class="cli-fila-ncf">
           <span class="cli-label">NCF:</span>
           <span class="cli-val" contenteditable="true" id="doc-ncf" data-placeholder="0"></span>
         </p>
@@ -169,17 +169,17 @@
       </div>
       <div class="tot-der">
         <table class="tabla-totales">
-          <tr>
+          <tr class="tot-fila-excento">
             <td class="tot-label">TOTAL EXCENTO</td>
             <td class="tot-signo">$</td>
             <td class="tot-val" id="tot-excento">0.00</td>
           </tr>
-          <tr>
+          <tr class="tot-fila-gravado">
             <td class="tot-label">TOTAL GRAVADO</td>
             <td class="tot-signo">$</td>
             <td class="tot-val" id="tot-gravado">0.00</td>
           </tr>
-          <tr>
+          <tr class="tot-fila-itbis">
             <td class="tot-label">ITBIS <span id="doc-itbis-pct">18</span>%</td>
             <td class="tot-signo">$</td>
             <td class="tot-val" id="tot-itbis">0.00</td>
@@ -279,29 +279,135 @@
         <span>&#x2699; Opciones de impresión</span>
         <button class="modal-cerrar" onclick="cerrarModalOpciones()">&#215;</button>
       </div>
+      <div class="modal-opc-tabs">
+        <button class="opc-tab opc-tab-activa" data-tab="doc"     onclick="opcTab('doc')">Documento</button>
+        <button class="opc-tab"                data-tab="serv"    onclick="opcTab('serv')">Servicios</button>
+        <button class="opc-tab"                data-tab="empresa" onclick="opcTab('empresa')">Empresa y banco</button>
+      </div>
+
       <div class="modal-opc-body">
 
-        <!-- Sección: Generales -->
-        <div class="opc-seccion">
-          <div class="opc-sec-titulo">Elementos generales</div>
-          <div class="opc-item">
-            <span class="opc-item-label">Tasa de cambio</span>
-            <button class="opc-toggle opc-toggle-on" id="opc-toggle-tasa"
-                    onclick="toggleOcultarTasa(); actualizarToggleTasa()"></button>
+        <!-- ══════════ PESTAÑA: DOCUMENTO ══════════ -->
+        <div class="opc-panel opc-panel-visible" id="opc-panel-doc">
+
+          <div class="opc-seccion">
+            <div class="opc-sec-titulo">Encabezado</div>
+            <div class="opc-item">
+              <span class="opc-item-label">N&uacute;mero de documento <em class="opc-hint">(COT-001)</em></span>
+              <button class="opc-toggle" id="opc-toggle-numero" onclick="toggleOpcion('numero')"></button>
+            </div>
+            <div class="opc-item">
+              <span class="opc-item-label">Referencia</span>
+              <button class="opc-toggle" id="opc-toggle-ref" onclick="toggleOpcion('ref')"></button>
+            </div>
+            <div class="opc-item">
+              <span class="opc-item-label">NCF</span>
+              <button class="opc-toggle" id="opc-toggle-ncf" onclick="toggleOpcion('ncf')"></button>
+            </div>
+          </div>
+
+          <div class="opc-seccion">
+            <div class="opc-sec-titulo">Totales</div>
+            <div class="opc-item">
+              <span class="opc-item-label">Tasa de cambio</span>
+              <button class="opc-toggle" id="opc-toggle-tasa" onclick="toggleOpcion('tasa')"></button>
+            </div>
+            <div class="opc-item">
+              <span class="opc-item-label">Total excento</span>
+              <button class="opc-toggle" id="opc-toggle-excento" onclick="toggleOpcion('excento')"></button>
+            </div>
+            <div class="opc-item">
+              <span class="opc-item-label">Total gravado</span>
+              <button class="opc-toggle" id="opc-toggle-gravado" onclick="toggleOpcion('gravado')"></button>
+            </div>
+            <div class="opc-item">
+              <span class="opc-item-label">ITBIS</span>
+              <button class="opc-toggle" id="opc-toggle-itbis" onclick="toggleOpcion('itbis')"></button>
+            </div>
+            <div class="opc-atajos">
+              <button class="opc-atajo" onclick="aplicarPresetTotales('uniforme')">Total uniforme</button>
+              <button class="opc-atajo" onclick="aplicarPresetTotales('desglose')">Desglose completo</button>
+            </div>
+            <p class="opc-explica" id="opc-explica-totales"></p>
+          </div>
+
+        </div>
+
+        <!-- ══════════ PESTAÑA: SERVICIOS ══════════ -->
+        <div class="opc-panel" id="opc-panel-serv">
+          <div class="opc-seccion">
+            <div class="opc-sec-titulo">Servicios</div>
+            <div id="opc-lista-servicios">
+              <!-- Generado por renderModalOpciones() -->
+            </div>
           </div>
         </div>
 
-        <!-- Sección: Servicios -->
-        <div class="opc-seccion">
-          <div class="opc-sec-titulo">Servicios</div>
-          <div id="opc-lista-servicios">
-            <!-- Generado por renderModalOpciones() -->
+        <!-- ══════════ PESTAÑA: EMPRESA Y BANCO ══════════ -->
+        <div class="opc-panel" id="opc-panel-empresa">
+
+          <div class="opc-seccion">
+            <div class="opc-sec-titulo">Datos fiscales</div>
+            <label class="opc-campo">
+              <span class="opc-campo-lbl">RNC de la empresa</span>
+              <input type="text" class="opc-inp" id="opc-emp-rnc" placeholder="133029189" />
+            </label>
+            <label class="opc-campo">
+              <span class="opc-campo-lbl">P&aacute;guese a</span>
+              <input type="text" class="opc-inp" id="opc-ban-pague" placeholder="Juanytours" />
+            </label>
           </div>
+
+          <div class="opc-seccion">
+            <div class="opc-sec-titulo">Informaci&oacute;n bancaria</div>
+            <label class="opc-campo">
+              <span class="opc-campo-lbl">Banco</span>
+              <input type="text" class="opc-inp" id="opc-ban-nombre" placeholder="BANCO DE RESERVAS..." />
+            </label>
+            <div class="opc-campo-fila">
+              <label class="opc-campo">
+                <span class="opc-campo-lbl">Etiqueta cuenta USD</span>
+                <input type="text" class="opc-inp" id="opc-ban-usd-lbl" placeholder="CUENTA USD AHORRO" />
+              </label>
+              <label class="opc-campo">
+                <span class="opc-campo-lbl">N&uacute;mero cuenta USD</span>
+                <input type="text" class="opc-inp" id="opc-ban-usd" placeholder="000-0000000-0" />
+              </label>
+            </div>
+            <label class="opc-campo">
+              <span class="opc-campo-lbl">IBAN USD</span>
+              <input type="text" class="opc-inp" id="opc-ban-iban-usd" placeholder="DO00..." />
+            </label>
+            <div class="opc-campo-fila">
+              <label class="opc-campo">
+                <span class="opc-campo-lbl">Etiqueta cuenta DOP</span>
+                <input type="text" class="opc-inp" id="opc-ban-dop-lbl" placeholder="CUENTA DOP CORRIENTE" />
+              </label>
+              <label class="opc-campo">
+                <span class="opc-campo-lbl">N&uacute;mero cuenta DOP</span>
+                <input type="text" class="opc-inp" id="opc-ban-dop" placeholder="000-0000000-0" />
+              </label>
+            </div>
+            <label class="opc-campo">
+              <span class="opc-campo-lbl">IBAN DOP</span>
+              <input type="text" class="opc-inp" id="opc-ban-iban-dop" placeholder="DO00..." />
+            </label>
+            <label class="opc-campo">
+              <span class="opc-campo-lbl">SWIFT</span>
+              <input type="text" class="opc-inp" id="opc-ban-swift" placeholder="BRRDDOSD" />
+            </label>
+          </div>
+
+          <div class="opc-seccion opc-seccion-acciones">
+            <button class="opc-atajo opc-atajo-ok"   onclick="guardarEmpresaOpciones()">&#x1F4BE; Aplicar datos de empresa</button>
+            <button class="opc-atajo" onclick="restablecerEmpresaOpciones()">Restablecer</button>
+          </div>
+
         </div>
 
       </div>
-      <div class="opc-nota-wrap">
-        &#x1F4A1; Los servicios ocultos no aparecen en el PDF pero se incluyen en el total.
+      <div class="opc-nota-wrap" id="opc-nota-wrap">
+        &#x1F4A1; Lo oculto no aparece al imprimir ni al exportar, pero se conserva y se sigue sumando en los totales.
       </div>
       <div class="modal-footer">
         <button class="btn-modal-cancelar" onclick="cerrarModalOpciones()">Cerrar</button>

@@ -18,6 +18,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const emp = window.EMPRESA;
   if (!emp) { alert('No se pudo cargar empresa.js'); return; }
 
+  EmpresaCfg.aplicarGuardado();   // ← overrides de RNC / banco desde Opciones
   poblarEmpresa(emp);
   iniciarListeners();
   await _sincronizarContador();   // ← inicializa el contador de numeración
@@ -70,6 +71,152 @@ function renderBanco(ba) {
     <div class="pc-celda" style="border-bottom:none"><span class="pc-label">${ba.cuentaDOPLabel||'CUENTA DOP CORRIENTE'}:</span> ${ba.cuentaDOP||''}</div>
     <div class="pc-celda" style="border-bottom:none"><span class="pc-label">IBAN:</span> ${ba.ibanDOP||''}</div>`;
 }
+
+// =============================================
+//  CONFIGURACIÓN DE EMPRESA / BANCO EDITABLE
+//  Guarda overrides en localStorage y los aplica
+//  sobre window.EMPRESA (data/empresa.js queda intacto).
+// =============================================
+const EmpresaCfg = {
+  KEY: 'jt_empresa_cfg',
+
+  // Campos editables: id del input → ruta dentro de window.EMPRESA
+  CAMPOS: {
+    'opc-emp-rnc':      ['empresa', 'rnc'],
+    'opc-ban-pague':    ['banco',   'pagueA'],
+    'opc-ban-nombre':   ['banco',   'nombre'],
+    'opc-ban-usd-lbl':  ['banco',   'cuentaUSDLabel'],
+    'opc-ban-usd':      ['banco',   'cuentaUSD'],
+    'opc-ban-iban-usd': ['banco',   'ibanUSD'],
+    'opc-ban-dop-lbl':  ['banco',   'cuentaDOPLabel'],
+    'opc-ban-dop':      ['banco',   'cuentaDOP'],
+    'opc-ban-iban-dop': ['banco',   'ibanDOP'],
+    'opc-ban-swift':    ['banco',   'swift']
+  },
+
+  leer() {
+    try { return JSON.parse(localStorage.getItem(this.KEY) || '{}') || {}; }
+    catch (e) { return {}; }
+  },
+
+  // Mezcla el override guardado sobre window.EMPRESA
+  aplicarGuardado() {
+    const cfg = this.leer();
+    const E   = window.EMPRESA;
+    if (!E) return;
+    Object.values(this.CAMPOS).forEach(([sec, key]) => {
+      const val = cfg[sec]?.[key];
+      if (val !== undefined && E[sec]) E[sec][key] = val;
+    });
+  },
+
+  // Vuelca los valores actuales en los inputs del modal
+  poblarInputs() {
+    const E = window.EMPRESA || {};
+    Object.entries(this.CAMPOS).forEach(([id, [sec, key]]) => {
+      const inp = document.getElementById(id);
+      if (inp) inp.value = E[sec]?.[key] ?? '';
+    });
+  },
+
+  // Lee los inputs, persiste y refresca el documento
+  guardarDesdeInputs() {
+    const cfg = {};
+    const E   = window.EMPRESA || {};
+    Object.entries(this.CAMPOS).forEach(([id, [sec, key]]) => {
+      const inp = document.getElementById(id);
+      if (!inp) return;
+      const val = inp.value.trim();
+      (cfg[sec] = cfg[sec] || {})[key] = val;
+      if (E[sec]) E[sec][key] = val;
+    });
+    try { localStorage.setItem(this.KEY, JSON.stringify(cfg)); }
+    catch (e) { console.warn('[EmpresaCfg] No se pudo guardar:', e); }
+    poblarEmpresa(E);
+  },
+
+  // Descarta los overrides y recarga los valores de data/empresa.js
+  restablecer() {
+    localStorage.removeItem(this.KEY);
+    return true;
+  }
+};
+
+function guardarEmpresaOpciones() {
+  EmpresaCfg.guardarDesdeInputs();
+  mostrarToast('✓ Datos de empresa aplicados');
+}
+
+function restablecerEmpresaOpciones() {
+  if (!confirm('¿Restablecer el RNC y los datos bancarios a los valores originales de empresa.js? Se recargará la página.')) return;
+  EmpresaCfg.restablecer();
+  location.reload();
+}
+
+// =============================================
+//  VISIBILIDAD DE ELEMENTOS DEL DOCUMENTO
+//  Cada clave añade la clase "sin-<clave>" al
+//  documento: se atenúa en pantalla y desaparece
+//  al imprimir / exportar. El dato nunca se borra.
+// =============================================
+const OPC_VIS = ['tasa', 'numero', 'ref', 'ncf', 'excento', 'gravado', 'itbis'];
+
+// Lee el estado de visibilidad actual desde las clases del documento
+function leerOpcionesVis() {
+  const doc = document.getElementById('documento');
+  const o   = {};
+  OPC_VIS.forEach(k => { o[k] = !!doc?.classList.contains('sin-' + k); });
+  return o;
+}
+
+// Aplica un objeto de visibilidad al documento
+function aplicarOpcionesVis(ocultar) {
+  const doc = document.getElementById('documento');
+  if (!doc) return;
+  const o = ocultar || {};
+  OPC_VIS.forEach(k => doc.classList.toggle('sin-' + k, !!o[k]));
+}
+
+function toggleOpcion(clave) {
+  const doc = document.getElementById('documento');
+  if (!doc || !OPC_VIS.includes(clave)) return;
+  doc.classList.toggle('sin-' + clave);
+  actualizarTogglesOpciones();
+  TabManager.marcarSinGuardar();
+}
+
+// Atajos: "Total uniforme" deja sólo TOTAL DOP / TOTAL USD
+function aplicarPresetTotales(preset) {
+  const doc = document.getElementById('documento');
+  if (!doc) return;
+  const ocultar = preset === 'uniforme';
+  ['excento', 'gravado', 'itbis'].forEach(k => doc.classList.toggle('sin-' + k, ocultar));
+  actualizarTogglesOpciones();
+  TabManager.marcarSinGuardar();
+}
+
+// Refresca el texto/color de todos los botones del modal
+function actualizarTogglesOpciones() {
+  const vis = leerOpcionesVis();
+  OPC_VIS.forEach(k => {
+    const btn = document.getElementById('opc-toggle-' + k);
+    if (!btn) return;
+    btn.textContent = vis[k] ? 'Oculto' : 'Visible';
+    btn.className   = 'opc-toggle ' + (vis[k] ? 'opc-toggle-off' : 'opc-toggle-on');
+  });
+
+  const exp = document.getElementById('opc-explica-totales');
+  if (exp) {
+    const uniforme = vis.excento && vis.gravado && vis.itbis;
+    exp.textContent = uniforme
+      ? 'Modo total uniforme: sólo se imprime el TOTAL. El ITBIS se sigue calculando y está incluido en el monto.'
+      : 'Lo que ocultes desaparece del PDF y del HTML exportado, pero se sigue sumando al TOTAL.';
+  }
+}
+
+// Compatibilidad con la versión anterior (botón de tasa)
+function toggleOcultarTasa()   { toggleOpcion('tasa'); }
+function actualizarToggleTasa() { actualizarTogglesOpciones(); }
 
 // =============================================
 //  TAB MANAGER
@@ -254,6 +401,8 @@ function capturarEstado() {
     tasaFija:    typeof TasaCambio !== 'undefined' ? TasaCambio.getFija()    : null,
     metodo:      getCE('doc-metodo'),
     notas:       getCE('doc-notas'),
+    ocultar:     leerOpcionesVis(),
+    // Se conserva por compatibilidad con cotizaciones guardadas antes
     ocultarTasa: document.getElementById('documento')?.classList.contains('sin-tasa') || false
   };
 }
@@ -286,9 +435,9 @@ function restaurarEstado(datos) {
     TasaCambio.setFija(datos.tasaFija ?? null);
   }
 
-  // Restaurar visibilidad de tasa en PDF
-  const docEl = document.getElementById('documento');
-  if (docEl)  docEl.classList.toggle('sin-tasa', !!datos.ocultarTasa);
+  // Restaurar visibilidad de elementos en PDF/exportación
+  // (formato antiguo: sólo existía "ocultarTasa")
+  aplicarOpcionesVis(datos.ocultar || { tasa: !!datos.ocultarTasa });
 
   calcularTotales();
 }
@@ -322,8 +471,7 @@ function iniciarEstadoVacio(numero = null) {
     TasaCambio.setFija(null);
   }
 
-  const docEl2 = document.getElementById('documento');
-  if (docEl2) docEl2.classList.remove('sin-tasa');
+  aplicarOpcionesVis({});
 
   calcularTotales();
   TabManager.actualizarNumero(num);
@@ -777,9 +925,22 @@ function cerrarModalOpciones() {
   if (modal) modal.classList.remove('visible');
 }
 
+// Cambia de pestaña dentro del modal de opciones
+function opcTab(nombre) {
+  document.querySelectorAll('.opc-tab').forEach(b => {
+    b.classList.toggle('opc-tab-activa', b.dataset.tab === nombre);
+  });
+  document.querySelectorAll('.opc-panel').forEach(p => {
+    p.classList.toggle('opc-panel-visible', p.id === 'opc-panel-' + nombre);
+  });
+}
+
 function renderModalOpciones() {
-  // Toggle de tasa
-  actualizarToggleTasa();
+  // Toggles de visibilidad (encabezado + totales)
+  actualizarTogglesOpciones();
+
+  // Datos de empresa / banco
+  EmpresaCfg.poblarInputs();
 
   // Lista de servicios
   const lista  = document.getElementById('opc-lista-servicios');
@@ -1019,7 +1180,8 @@ async function exportarHTML() {
   const tasa     = typeof TasaCambio !== 'undefined' ? TasaCambio.get() : 60.65;
   const itbisPct = fi.itbisPorcentaje || 18;
   const cuentasHTML = document.getElementById('bloque-cuentas')?.innerHTML || '';
-  const ocultarTasa = document.getElementById('documento')?.classList.contains('sin-tasa') || false;
+  const vis         = leerOpcionesVis();
+  const clasesVis   = OPC_VIS.filter(k => vis[k]).map(k => ' sin-' + k).join('');
   const filasHTML   = _htmlFilas(estado.items, itbisPct);
 
   const tiposOpts = ['COTIZACIÓN','FACTURA DE CRÉDITO FISCAL','FACTURA','PROFORMA']
@@ -1077,7 +1239,16 @@ body{padding-top:52px!important;background:#DEE6EF;}
   cursor:pointer;font-family:inherit;}
 .exp-btn-print{background:#E85421;color:#fff;}
 .exp-btn-print:hover{opacity:.85;}
-@media print{.exp-bar{display:none!important;}body{padding-top:0!important;background:#fff!important;}${ocultarTasa ? '.tot-izq{visibility:hidden!important;}' : ''}}
+.sin-tasa .tot-izq,.sin-numero .doc-numero-wrap,.sin-ref .fr-fila-ref,.sin-ncf .cli-fila-ncf,
+.sin-excento .tot-fila-excento,.sin-gravado .tot-fila-gravado,.sin-itbis .tot-fila-itbis{opacity:.3;}
+@media print{
+  .exp-bar{display:none!important;}
+  body{padding-top:0!important;background:#fff!important;}
+  .sin-tasa .tot-izq,.sin-numero .doc-numero-wrap,.sin-ref .fr-fila-ref,
+  .sin-ncf .cli-fila-ncf{visibility:hidden!important;opacity:1!important;}
+  .sin-excento .tot-fila-excento,.sin-gravado .tot-fila-gravado,
+  .sin-itbis .tot-fila-itbis{display:none!important;}
+}
   </style>
 </head>
 <body>
@@ -1089,7 +1260,7 @@ body{padding-top:52px!important;background:#DEE6EF;}
   </div>
 </div>
 
-<div class="pagina">
+<div class="pagina${clasesVis}">
   <div class="encabezado">
     <div class="enc-izq">
       ${logoSrc ? `<img src="${logoSrc}" alt="Logo" class="doc-logo"/>` : ''}
@@ -1114,7 +1285,7 @@ body{padding-top:52px!important;background:#DEE6EF;}
           <span class="fr-label">FECHA:</span>
           <input type="date" id="doc-fecha" class="inp-fecha" value="${escHTML(estado.fecha || '')}"/>
         </div>
-        <div class="fr-fila">
+        <div class="fr-fila fr-fila-ref">
           <span class="fr-label">REFERENCIA:</span>
           <span class="fr-val" contenteditable="true" data-placeholder="0">${escHTML(estado.ref || '')}</span>
         </div>
@@ -1135,7 +1306,7 @@ body{padding-top:52px!important;background:#DEE6EF;}
     </div>
     <div class="cli-der">
       <p class="cli-tipo-doc" id="cli-tipo-doc-texto">${escHTML(tipoDoc)}</p>
-      <p><span class="cli-label">NCF:</span>
+      <p class="cli-fila-ncf"><span class="cli-label">NCF:</span>
          <span class="cli-val" contenteditable="true" data-placeholder="0">${escHTML(estado.ncf || '')}</span></p>
     </div>
   </div>
@@ -1164,9 +1335,9 @@ ${filasHTML}    </tbody>
     </div>
     <div class="tot-der">
       <table class="tabla-totales">
-        <tr><td class="tot-label">TOTAL EXCENTO</td><td class="tot-signo">$</td><td class="tot-val" id="tot-excento">0.00</td></tr>
-        <tr><td class="tot-label">TOTAL GRAVADO</td><td class="tot-signo">$</td><td class="tot-val" id="tot-gravado">0.00</td></tr>
-        <tr><td class="tot-label">ITBIS ${itbisPct}%</td><td class="tot-signo">$</td><td class="tot-val" id="tot-itbis">0.00</td></tr>
+        <tr class="tot-fila-excento"><td class="tot-label">TOTAL EXCENTO</td><td class="tot-signo">$</td><td class="tot-val" id="tot-excento">0.00</td></tr>
+        <tr class="tot-fila-gravado"><td class="tot-label">TOTAL GRAVADO</td><td class="tot-signo">$</td><td class="tot-val" id="tot-gravado">0.00</td></tr>
+        <tr class="tot-fila-itbis"><td class="tot-label">ITBIS ${itbisPct}%</td><td class="tot-signo">$</td><td class="tot-val" id="tot-itbis">0.00</td></tr>
         <tr class="tot-fila-dop">
           <td class="tot-label"><strong>TOTAL ${escHTML(fi.monedaLocal || 'DOP')}</strong></td>
           <td class="tot-signo"><strong>$</strong></td>

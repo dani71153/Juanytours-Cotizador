@@ -4,8 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Cotizador — Juanytours</title>
-  <link rel="stylesheet" href="css/estilos.css?v=4" />
-  <link rel="stylesheet" href="css/biblioteca.css?v=4" />
+  <link rel="stylesheet" href="css/estilos.css?v=5" />
+  <link rel="stylesheet" href="css/biblioteca.css?v=5" />
+  <link rel="stylesheet" href="css/plantilla-laps.css?v=5" />
 </head>
 <body>
 
@@ -235,6 +236,17 @@
         <div class="opc-panel" id="opc-panel-empresa">
 
           <div class="opc-seccion">
+            <div class="opc-sec-titulo">Empresa activa</div>
+            <label class="opc-campo">
+              <span class="opc-campo-lbl">Perfil &mdash; define los datos y la plantilla</span>
+              <select class="opc-inp" id="opc-sel-perfil" onchange="cambiarPerfil(this.value)">
+                <!-- Generado por renderModalOpciones() -->
+              </select>
+            </label>
+            <p class="opc-explica" id="opc-explica-perfil"></p>
+          </div>
+
+          <div class="opc-seccion">
             <div class="opc-sec-titulo">Datos fiscales</div>
             <div class="opc-campo-fila">
               <label class="opc-campo" style="flex:0 0 130px">
@@ -316,13 +328,13 @@
   <!-- ===== TOAST DE GUARDADO ===== -->
   <div id="toast-guardado" class="toast-guardado no-print" style="display:none">&#x2713; Guardado</div>
 
-  <script src="data/empresa.js?v=4"></script>
-  <script src="shared/tasa.js?v=4"></script>
-  <script src="database/db.js?v=4"></script>
-  <script src="database/cotizaciones.js?v=4"></script>
-  <script src="permanencia/sesion.js?v=4"></script>
-  <script src="permanencia/borrador.js?v=4"></script>
-  <script src="js/plantilla.js?v=4"></script>
-  <script src="js/app.js?v=4"></script>
+  <script src="data/empresa.js?v=5"></script>
+  <script src="shared/tasa.js?v=5"></script>
+  <script src="database/db.js?v=5"></script>
+  <script src="database/cotizaciones.js?v=5"></script>
+  <script src="permanencia/sesion.js?v=5"></script>
+  <script src="permanencia/borrador.js?v=5"></script>
+  <script src="js/plantilla.js?v=5"></script>
+  <script src="js/app.js?v=5"></script>
 </body>
 </html>

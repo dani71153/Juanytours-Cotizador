@@ -1,0 +1,202 @@
+/* =============================================
+   PLANTILLA LAPS
+   Se aplica cuando .pagina lleva la clase .pl-laps.
+   Sólo redefine lo que difiere del diseño clásico;
+   tipografía, tabla y placeholders vienen de estilos.css.
+   ============================================= */
+
+/* Elementos que la plantilla necesita en el DOM pero no muestra
+   (los usan poblarEmpresa / calcularTotales) */
+.pl-laps .laps-oculto { display: none !important; }
+
+/* ── Cabecera centrada ─────────────────────── */
+.pl-laps .laps-cab {
+  text-align: center;
+  padding-bottom: 6px;
+}
+
+.pl-laps .laps-logo {
+  max-height: 70px;
+  max-width: 240px;
+  object-fit: contain;
+  margin: 0 auto 8px;
+  display: block;
+}
+
+.pl-laps .laps-cab-linea {
+  font-size: 11px;
+  color: #222;
+  margin: 2px 0;
+}
+
+.pl-laps .linea-azul {
+  height: 3px;
+  background: var(--azul, #003A78);
+  margin: 6px 0 0;
+}
+
+/* ── Emisor + cliente | caja de datos ──────── */
+.pl-laps .laps-bloques {
+  display: grid;
+  grid-template-columns: 1fr 210px;
+  border: 1px solid var(--gris-borde, #ccc);
+  border-top: none;
+}
+
+.pl-laps .laps-emisor {
+  padding: 10px 12px;
+  font-size: 11px;
+  border-right: 1px solid var(--gris-borde, #ccc);
+}
+
+.pl-laps .laps-emisor p { margin: 2px 0; }
+
+.pl-laps .laps-emisor .empresa-nombre {
+  font-weight: bold;
+  font-size: 12px;
+  margin-bottom: 4px;
+}
+
+.pl-laps .laps-cliente { margin-top: 14px; }
+
+.pl-laps .laps-cli-tit {
+  font-weight: bold;
+  font-size: 11.5px;
+}
+
+.pl-laps .laps-cli-nombre {
+  font-weight: bold;
+  font-size: 12px;
+  margin-bottom: 4px !important;
+}
+
+/* Caja de la derecha: pares etiqueta / valor */
+.pl-laps .laps-meta {
+  display: flex;
+  flex-direction: column;
+  font-size: 11px;
+  text-align: center;
+}
+
+.pl-laps .lm-cab,
+.pl-laps .lm-val {
+  padding: 3px 6px;
+  border-bottom: 1px solid var(--gris-borde, #ccc);
+  min-height: 17px;
+}
+
+.pl-laps .lm-cab {
+  font-weight: bold;
+  background: var(--gris-fondo, #F1F4F9);
+}
+
+.pl-laps .lm-val:last-child { border-bottom: none; }
+
+.pl-laps .lm-valido {
+  font-size: 10px;
+  font-style: italic;
+  margin-top: auto;
+  border-bottom: none;
+}
+
+.pl-laps .laps-meta .doc-numero {
+  font-size: 13px;
+  font-weight: bold;
+  border: none;
+  color: #111;
+}
+
+.pl-laps .laps-meta .inp-fecha {
+  border: none;
+  background: none;
+  font-size: 11px;
+  text-align: center;
+  width: 100%;
+  font-family: inherit;
+}
+
+.pl-laps .laps-meta #doc-titulo-texto { font-weight: bold; }
+
+/* ── Tabla ─────────────────────────────────── */
+.pl-laps .tabla-laps { margin-top: 12px; }
+
+.pl-laps .tabla-laps thead th {
+  font-size: 10.5px;
+  text-transform: uppercase;
+}
+
+.pl-laps .th-unidad,
+.pl-laps .td-unidad  { width: 70px;  text-align: center; }
+.pl-laps .th-linea,
+.pl-laps .td-linea   { width: 100px; text-align: right; }
+.pl-laps .th-cantidad,
+.pl-laps .td-cantidad{ text-align: center; }
+.pl-laps .th-monto,
+.pl-laps .td-monto   { text-align: right; }
+
+.pl-laps .td-linea { font-variant-numeric: tabular-nums; }
+
+/* ── Datos bancarios en texto plano ────────── */
+.pl-laps .laps-pie {
+  margin-top: 14px;
+  align-items: flex-start;
+}
+
+.pl-laps .laps-banco { font-size: 10.5px; }
+.pl-laps .laps-banco p { margin: 1px 0; }
+.pl-laps .laps-banco-tit { font-weight: bold; margin-bottom: 3px !important; }
+
+/* La tabla de totales de LAPS es de dos columnas, sin el signo $ */
+.pl-laps .tabla-totales-laps { font-size: 11px; }
+
+.pl-laps .tabla-totales-laps td {
+  padding: 4px 8px;
+  border: 1px solid var(--gris-borde, #ccc);
+}
+
+.pl-laps .tabla-totales-laps .tot-label { font-weight: normal; }
+.pl-laps .tabla-totales-laps .tot-val   { text-align: right; width: 110px; }
+
+.pl-laps .tot-fila-dop td {
+  background: #fff;
+  font-weight: bold;
+  border-top: 2px solid var(--azul, #003A78);
+}
+.pl-laps .tot-fila-usd { display: none; }
+
+/* ── Pie de firmas ─────────────────────────── */
+.pl-laps .laps-firmas {
+  display: flex;
+  justify-content: space-between;
+  gap: 40px;
+  margin-top: 26px;
+  font-size: 11px;
+  font-weight: bold;
+}
+
+.pl-laps .laps-firma { flex: 1; }
+
+.pl-laps .laps-firma-espacio {
+  border: 1px solid var(--gris-borde, #ccc);
+  border-top: 2px solid var(--azul, #003A78);
+  margin-top: 6px;
+  min-height: 70px;
+  padding: 6px 8px;
+}
+
+.pl-laps .laps-firma-espacio .pago-notas {
+  border: none;
+  padding: 0;
+  font-size: 11px;
+  min-height: 56px;
+}
+
+/* ── Impresión ─────────────────────────────── */
+@media print {
+  .pl-laps .laps-meta .inp-fecha { border: none !important; }
+  .pl-laps .laps-firma-espacio   { min-height: 60px; }
+  .pl-laps .th-tipo,
+  .pl-laps .td-tipo,
+  .pl-laps .th-del,
+  .pl-laps .td-del { display: none !important; }
+}

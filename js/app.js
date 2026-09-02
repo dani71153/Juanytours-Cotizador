@@ -15,16 +15,78 @@ let contadorFilas = 0;
 //  INIT
 // =============================================
 document.addEventListener('DOMContentLoaded', async () => {
-  const emp = window.EMPRESA;
-  if (!emp) { alert('No se pudo cargar empresa.js'); return; }
+  if (!window.PERFILES && !window.EMPRESA) {
+    alert('No se pudo cargar data/empresa.js'); return;
+  }
 
-  EmpresaCfg.aplicarGuardado();   // ← overrides de RNC / banco desde Opciones
+  Perfiles.iniciar();             // ← elige empresa activa + aplica overrides
   montarDocumento();              // ← el markup viene de js/plantilla.js
-  poblarEmpresa(emp);
+  poblarEmpresa(window.EMPRESA);
   iniciarListeners();             // ← después de montar: engancha nodos del documento
   await _sincronizarContador();   // ← inicializa el contador de numeración
   await TabManager.init();
 });
+
+// =============================================
+//  PERFILES DE EMPRESA
+//  Cada perfil trae sus datos y su plantilla.
+//  Los overrides de EmpresaCfg se guardan por perfil.
+// =============================================
+const Perfiles = {
+  KEY: 'jt_perfil_activo',
+
+  lista() {
+    return Object.entries(window.PERFILES || {})
+      .map(([id, p]) => ({ id, nombre: p.nombre || id, plantilla: p.plantilla || 'clasica' }));
+  },
+
+  activoId() {
+    const guardado = localStorage.getItem(this.KEY);
+    if (guardado && window.PERFILES?.[guardado]) return guardado;
+    return window.PERFIL_DEFECTO || Object.keys(window.PERFILES || {})[0];
+  },
+
+  plantilla() {
+    return window.EMPRESA?.plantilla || 'clasica';
+  },
+
+  // Deja window.EMPRESA apuntando al perfil pedido (sin tocar el DOM)
+  _resolver(id) {
+    const P = window.PERFILES || {};
+    const perfil = P[id] || P[window.PERFIL_DEFECTO] || Object.values(P)[0];
+    window.EMPRESA = perfil;
+    return perfil;
+  },
+
+  // Carga el perfil al arrancar
+  iniciar() {
+    const id = this.activoId();
+    this._resolver(id);
+    EmpresaCfg.aplicarGuardado();
+    return id;
+  },
+
+  // Cambia de empresa: recarga datos, plantilla y documento
+  async cambiar(id) {
+    if (!window.PERFILES?.[id] || id === this.activoId()) return;
+    await TabManager._autoGuardar();
+
+    localStorage.setItem(this.KEY, id);
+    this._resolver(id);
+    EmpresaCfg.aplicarGuardado();
+
+    const estado = capturarEstado();     // conservar lo que el usuario ya escribió
+    montarDocumento();
+    poblarEmpresa(window.EMPRESA);
+    iniciarListenersDocumento();
+    restaurarEstado(estado);
+
+    renderModalOpciones();
+    mostrarToast('✓ Empresa: ' + (window.EMPRESA.nombre || id));
+  }
+};
+
+function cambiarPerfil(id) { Perfiles.cambiar(id); }
 
 // =============================================
 //  MONTAJE DEL DOCUMENTO
@@ -41,14 +103,20 @@ function montarDocumento() {
     return;
   }
   const E = window.EMPRESA || {};
+  const pl = E.plantilla || 'clasica';
   cont.innerHTML = Plantilla.interior({
-    modo:    'editor',
-    estado:  {},
-    empresa: E.empresa,
-    banco:   E.banco,
-    fiscal:  E.fiscal,
-    logo:    E.empresa?.logo || ''
+    modo:      'editor',
+    plantilla: pl,
+    estado:    {},
+    empresa:   E.empresa,
+    banco:     E.banco,
+    fiscal:    E.fiscal,
+    defectos:  E.defectos,
+    logo:      E.empresa?.logo || ''
   });
+  // La clase de plantilla vive en el contenedor, junto a las sin-*
+  cont.classList.remove('pl-clasica', 'pl-laps');
+  cont.classList.add('pl-' + pl);
 }
 
 // =============================================
@@ -116,9 +184,14 @@ const EmpresaCfg = {
     'opc-ban-swift':    ['banco',   'swift']
   },
 
-  leer() {
+  // Todos los overrides, indexados por perfil
+  leerTodo() {
     try { return JSON.parse(localStorage.getItem(this.KEY) || '{}') || {}; }
     catch (e) { return {}; }
+  },
+
+  leer() {
+    return this.leerTodo()[Perfiles.activoId()] || {};
   },
 
   // Mezcla el override guardado sobre window.EMPRESA
@@ -152,14 +225,20 @@ const EmpresaCfg = {
       (cfg[sec] = cfg[sec] || {})[key] = val;
       if (E[sec]) E[sec][key] = val;
     });
-    try { localStorage.setItem(this.KEY, JSON.stringify(cfg)); }
-    catch (e) { console.warn('[EmpresaCfg] No se pudo guardar:', e); }
+    try {
+      const todo = this.leerTodo();
+      todo[Perfiles.activoId()] = cfg;
+      localStorage.setItem(this.KEY, JSON.stringify(todo));
+    } catch (e) { console.warn('[EmpresaCfg] No se pudo guardar:', e); }
     poblarEmpresa(E);
   },
 
   // Descarta los overrides y recarga los valores de data/empresa.js
+  // Descarta sólo los overrides del perfil activo
   restablecer() {
-    localStorage.removeItem(this.KEY);
+    const todo = this.leerTodo();
+    delete todo[Perfiles.activoId()];
+    localStorage.setItem(this.KEY, JSON.stringify(todo));
     return true;
   }
 };
@@ -452,6 +531,14 @@ function capturarEstado() {
     notas:       getCE('doc-notas'),
     ocultar:     leerOpcionesVis(),
     idCliente:   leerEtiquetaIdCliente(),
+    // Perfil de empresa con el que se creó (define la plantilla)
+    perfil:      Perfiles.activoId(),
+    // Campos que sólo usa la plantilla LAPS; en la clásica quedan vacíos
+    dirCliente:    getCE('doc-cli-dir'),
+    codigoCliente: getCE('doc-cod-cliente'),
+    validoHasta:   getCE('doc-valido-hasta'),
+    vendedor:      getCE('doc-vendedor'),
+    vencimiento:   document.getElementById('doc-vencimiento')?.value || '',
     // Se conserva por compatibilidad con cotizaciones guardadas antes
     ocultarTasa: document.getElementById('documento')?.classList.contains('sin-tasa') || false
   };
@@ -467,6 +554,14 @@ function restaurarEstado(datos) {
   setCE('doc-ncf',    datos.ncf    || '');
   setCE('doc-metodo', datos.metodo || '');
   setCE('doc-notas',  datos.notas  || '');
+
+  // Campos de la plantilla LAPS (inofensivos si no existen)
+  setCE('doc-cli-dir',      datos.dirCliente    || '');
+  setCE('doc-cod-cliente',  datos.codigoCliente || '');
+  setCE('doc-vendedor',     datos.vendedor      || window.EMPRESA?.defectos?.vendedor    || '');
+  setCE('doc-valido-hasta', datos.validoHasta   || window.EMPRESA?.defectos?.validoHasta || '');
+  const venc = document.getElementById('doc-vencimiento');
+  if (venc) venc.value = datos.vencimiento || '';
 
   const sel = document.getElementById('sel-tipo-doc');
   if (sel && datos.tipoDoc) { sel.value = datos.tipoDoc; cambiarTipoDoc(datos.tipoDoc); }
@@ -507,6 +602,12 @@ function iniciarEstadoVacio(numero = null) {
   setCE('doc-ncf',    '');
   setCE('doc-metodo', '');
   setCE('doc-notas',  '');
+  setCE('doc-cli-dir',     '');
+  setCE('doc-cod-cliente', '');
+  setCE('doc-vendedor',     window.EMPRESA?.defectos?.vendedor    || '');
+  setCE('doc-valido-hasta', window.EMPRESA?.defectos?.validoHasta || '');
+  const vencNuevo = document.getElementById('doc-vencimiento');
+  if (vencNuevo) vencNuevo.value = '';
 
   const sel = document.getElementById('sel-tipo-doc');
   if (sel) { sel.value = 'COTIZACIÓN'; cambiarTipoDoc('COTIZACIÓN'); }
@@ -815,10 +916,12 @@ function renderFilas() {
       <button class="btn-mover" onclick="moverFila(${fila.id},-1)" ${isFirst ? 'disabled' : ''} title="Subir">&#8593;</button>
       <button class="btn-mover" onclick="moverFila(${fila.id}, 1)" ${isLast  ? 'disabled' : ''} title="Bajar">&#8595;</button>`;
 
+    const laps = Perfiles.plantilla() === 'laps';
+
     if (fila.type === 'nota') {
       tr.className = 'tr-nota';
       tr.innerHTML = `
-        <td class="td-nota" colspan="4" contenteditable="true"
+        <td class="td-nota" colspan="${laps ? 5 : 4}" contenteditable="true"
             data-field="texto"
             data-placeholder="Escribe aquí la nota o aclaración..."
         >${escHTML(fila.texto)}</td>
@@ -832,15 +935,25 @@ function renderFilas() {
 
     } else {
       numItem++;
+      const celdaNum    = laps ? '' : `<td class="td-num">${numItem}</td>`;
+      const celdaUnidad = laps
+        ? `<td class="td-unidad" contenteditable="true" data-field="unidad"
+               data-placeholder="UNIDAD">${escHTML(fila.unidad || 'UNIDAD')}</td>`
+        : '';
+      const celdaLinea  = laps
+        ? `<td class="td-linea" data-field="linea">${formatNum((fila.monto || 0) * (fila.cantidad || 1))}</td>`
+        : '';
       tr.innerHTML = `
-        <td class="td-num">${numItem}</td>
+        ${celdaNum}
         <td class="td-det" contenteditable="true" data-field="desc"
             data-placeholder="Descripción del servicio&#10;(puede ser multilínea)"
         >${escHTML(fila.desc)}</td>
+        ${celdaUnidad}
         <td class="td-cantidad" contenteditable="true" data-field="cantidad"
             data-placeholder="1">${fila.cantidad}</td>
         <td class="td-monto"   contenteditable="true" data-field="monto"
             data-placeholder="0.00">${formatNum(fila.monto)}</td>
+        ${celdaLinea}
         <td class="td-tipo no-print">
           <select class="sel-tipo-item" onchange="cambiarTipo(${fila.id}, this.value)">
             <option value="exento"  ${fila.tipo==='exento'  ? 'selected' : ''}>Exento</option>
@@ -866,7 +979,7 @@ function renderFilas() {
   for (let x = total; x < 3; x++) {
     const tr2 = document.createElement('tr');
     tr2.className = 'tr-vacio';
-    tr2.innerHTML = '<td></td><td></td><td></td><td></td>';
+    tr2.innerHTML = '<td></td>'.repeat(Perfiles.plantilla() === 'laps' ? 5 : 4);
     tbody.appendChild(tr2);
   }
 }
@@ -875,8 +988,9 @@ function actualizarFila(id, campo, valor) {
   const fila = cot.items.find(f => f.id === id);
   if (!fila) return;
   if (campo === 'cantidad') fila.cantidad = parseFloat(valor) || 1;
-  else if (campo === 'monto') fila.monto  = parseMonto(valor);
-  else if (campo === 'desc')  fila.desc   = valor;
+  else if (campo === 'monto')  fila.monto  = parseMonto(valor);
+  else if (campo === 'desc')   fila.desc   = valor;
+  else if (campo === 'unidad') fila.unidad = valor;
   calcularTotales();
 }
 
@@ -898,9 +1012,11 @@ function _syncItemsDesdeDOM() {
       const d = tr.querySelector('[data-field="desc"]');
       const c = tr.querySelector('[data-field="cantidad"]');
       const m = tr.querySelector('[data-field="monto"]');
+      const u = tr.querySelector('[data-field="unidad"]');
       if (d) fila.desc     = d.innerText;
       if (c) fila.cantidad = parseFloat(c.innerText) || 1;
       if (m) fila.monto    = parseMonto(m.innerText);
+      if (u) fila.unidad   = u.innerText.trim();
     }
   });
 }
@@ -924,17 +1040,24 @@ function calcularTotales() {
     const cant   = parseFloat(tr.querySelector('[data-field="cantidad"]')?.innerText || '1') || 1;
     const total  = monto * cant;
     if (fila.tipo === 'gravado') gravado += total; else excento += total;
+
+    // Columna TOTAL por línea (sólo existe en la plantilla LAPS)
+    const celLinea = tr.querySelector('[data-field="linea"]');
+    if (celLinea) celLinea.textContent = formatNum(total);
   });
 
   const itbs     = gravado * (itbsPct / 100);
   const totalDOP = excento + gravado + itbs;
   const totalUSD = tasa > 0 ? totalDOP / tasa : 0;
 
-  setText('tot-excento', formatNum(excento));
-  setText('tot-gravado', formatNum(gravado));
-  setText('tot-itbis',   formatNum(itbs));
-  document.getElementById('tot-dop').innerHTML = '<strong>' + formatNum(totalDOP) + '</strong>';
-  document.getElementById('tot-usd').innerHTML = '<strong>' + formatNum(totalUSD) + '</strong>';
+  setText('tot-excento',  formatNum(excento));
+  setText('tot-gravado',  formatNum(gravado));
+  setText('tot-itbis',    formatNum(itbs));
+  // Filas propias de LAPS: Subtotal = base imponible, Suma = subtotal + ITBIS
+  setText('tot-subtotal', formatNum(gravado));
+  setText('tot-suma',     formatNum(gravado + itbs));
+  setHTML('tot-dop', '<strong>' + formatNum(totalDOP) + '</strong>');
+  setHTML('tot-usd', '<strong>' + formatNum(totalUSD) + '</strong>');
 }
 
 // =============================================
@@ -994,7 +1117,8 @@ function renderModalOpciones() {
   // Etiqueta de identificación del cliente
   aplicarEtiquetaIdCliente(leerEtiquetaIdCliente());
 
-  // Datos de empresa / banco
+  // Empresa activa + datos de empresa / banco
+  renderSelectorPerfil();
   EmpresaCfg.poblarInputs();
 
   // Lista de servicios
@@ -1026,6 +1150,24 @@ function renderModalOpciones() {
   });
 }
 
+// Llena el desplegable de empresas del modal
+function renderSelectorPerfil() {
+  const sel = document.getElementById('opc-sel-perfil');
+  if (!sel) return;
+  const activo = Perfiles.activoId();
+  sel.innerHTML = Perfiles.lista()
+    .map(p => `<option value="${p.id}"${p.id === activo ? ' selected' : ''}>${escHTML(p.nombre)}</option>`)
+    .join('');
+
+  const exp = document.getElementById('opc-explica-perfil');
+  if (exp) {
+    const pl = Perfiles.plantilla();
+    exp.textContent = pl === 'laps'
+      ? 'Plantilla LAPS: logo centrado, columnas UD. M y TOTAL por línea, y pie de firmas.'
+      : 'Plantilla clásica: logo a la izquierda, totales con excento/gravado y conversión a USD.';
+  }
+}
+
 function toggleVisibilidadFila(id) {
   const fila = cot.items.find(f => f.id === id);
   if (!fila || fila.type !== 'item') return;
@@ -1053,7 +1195,7 @@ function cerrarExportMenu() {
 function exportarPDF() {
   const num   = document.getElementById('doc-numero')?.textContent || 'cotizacion';
   const titulo = document.title;
-  document.title = 'Juanytours-' + num.trim();
+  document.title = _marcaArchivo() + '-' + num.trim();
   window.print();
   document.title = titulo;
 }
@@ -1062,6 +1204,13 @@ function exportarPDF() {
 //  LISTENERS GLOBALES
 // =============================================
 function iniciarListeners() {
+  iniciarListenersDocumento();
+  iniciarListenersGlobales();
+}
+
+// Nodos que viven dentro de #documento: se vuelven a enganchar
+// cada vez que montarDocumento() regenera el markup.
+function iniciarListenersDocumento() {
   document.getElementById('sel-tipo-doc')?.addEventListener('change', function () {
     cambiarTipoDoc(this.value);
     TabManager.marcarSinGuardar();
@@ -1089,6 +1238,20 @@ function iniciarListeners() {
     if (typeof TasaCambio !== 'undefined') TasaCambio.mostrarEditor();
   });
 
+  // Marcar sin guardar en todos los contenteditable del documento
+  document.getElementById('documento')?.querySelectorAll('[contenteditable]').forEach(el => {
+    if (el.id === 'doc-tasa' || el.id === 'doc-numero') return; // ya manejados
+    el.addEventListener('input', () => TabManager.marcarSinGuardar());
+  });
+
+  // Fecha de vencimiento (sólo plantilla LAPS)
+  document.getElementById('doc-vencimiento')?.addEventListener('change', () => {
+    TabManager.marcarSinGuardar();
+  });
+}
+
+// Se registran una sola vez, sobre document / window.
+function iniciarListenersGlobales() {
   // Cerrar dropdown exportar al hacer clic fuera
   document.addEventListener('click', () => cerrarExportMenu());
 
@@ -1099,12 +1262,6 @@ function iniciarListeners() {
       Borrador.guardarUltimoConocido();      // usa el último estado capturado (síncrono)
     }
     Sesion.guardar(TabManager.tabs, TabManager.activeId);
-  });
-
-  // Marcar sin guardar en todos los contenteditable del documento
-  document.getElementById('documento')?.querySelectorAll('[contenteditable]').forEach(el => {
-    if (el.id === 'doc-tasa' || el.id === 'doc-numero') return; // ya manejados
-    el.addEventListener('input', () => TabManager.marcarSinGuardar());
   });
 }
 
@@ -1137,6 +1294,10 @@ function setText(id, val) {
 function getCE(id) {
   return document.getElementById(id)?.textContent.trim() || '';
 }
+function setHTML(id, html) {
+  const el = document.getElementById(id);
+  if (el) el.innerHTML = html;
+}
 function setCE(id, val) {
   const el = document.getElementById(id);
   if (el) el.textContent = val;
@@ -1148,6 +1309,12 @@ function setImg(id, src) {
 function escHTML(str) {
   return String(str)
     .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// Nombre de la empresa activa, saneado para usarlo en archivos
+function _marcaArchivo() {
+  const n = window.EMPRESA?.nombre || window.EMPRESA?.empresa?.nombre || 'Cotizacion';
+  return n.replace(/[^a-z0-9]+/gi, '_').replace(/^_+|_+$/g, '') || 'Cotizacion';
 }
 
 function _generarNumero() {
@@ -1234,41 +1401,51 @@ async function exportarHTML() {
   const tasa     = typeof TasaCambio !== 'undefined' ? TasaCambio.get() : 60.65;
   const vis      = leerOpcionesVis();
   const clasesVis = OPC_VIS.filter(k => vis[k]).map(k => ' sin-' + k).join('');
+  const pl        = E.plantilla || 'clasica';
+  const marca     = E.empresa?.nombre || 'Cotizacion';
 
   // Mismo markup que el editor — ver js/plantilla.js
   const documentoHTML = Plantilla.interior({
     modo:      'export',
+    plantilla: pl,
     estado:    estado,
     empresa:   E.empresa,
     banco:     E.banco,
     fiscal:    E.fiscal,
+    defectos:  E.defectos,
     logo:      logoSrc,
     tasa:      tasa,
-    filasHTML: Plantilla.filasExport(estado.items)
+    filasHTML: Plantilla.filasExport(estado.items, pl)
   });
 
   const scriptInline = `(function(){
   var ITBIS=${itbisPct};
+  var MARCA=${JSON.stringify(_marcaArchivo())};
   function pM(s){return parseFloat(String(s).replace(/[\s,]/g,''))||0;}
   function fN(n){return Number(n).toLocaleString('es-DO',{minimumFractionDigits:2,maximumFractionDigits:2});}
   function sT(id,v){var el=document.getElementById(id);if(el)el.textContent=v;}
+  function sH(id,h){var el=document.getElementById(id);if(el)el.innerHTML=h;}
   window.calcTotales=function(){
     var tasa=pM(document.getElementById('doc-tasa')?.innerText||'60.65')||60.65;
     var ex=0,gr=0;
     document.querySelectorAll('#tabla-body tr[data-tipo]').forEach(function(tr){
       var monto=pM((tr.querySelector('[data-field="monto"]')||{}).innerText||'0');
       var cant=parseFloat((tr.querySelector('[data-field="cantidad"]')||{}).innerText||'1')||1;
-      if(tr.dataset.tipo==='gravado') gr+=monto*cant; else ex+=monto*cant;
+      var tot=monto*cant;
+      if(tr.dataset.tipo==='gravado') gr+=tot; else ex+=tot;
+      var cl=tr.querySelector('[data-field="linea"]');
+      if(cl) cl.textContent=fN(tot);
     });
     var itbs=gr*(ITBIS/100),dop=ex+gr+itbs,usd=tasa>0?dop/tasa:0;
     sT('tot-excento',fN(ex));sT('tot-gravado',fN(gr));sT('tot-itbis',fN(itbs));
-    document.getElementById('tot-dop').innerHTML='<strong>'+fN(dop)+'</strong>';
-    document.getElementById('tot-usd').innerHTML='<strong>'+fN(usd)+'</strong>';
+    sT('tot-subtotal',fN(gr));sT('tot-suma',fN(gr+itbs));
+    sH('tot-dop','<strong>'+fN(dop)+'</strong>');
+    sH('tot-usd','<strong>'+fN(usd)+'</strong>');
   };
   window.cambiarTipoDoc=function(v){sT('doc-titulo-texto',v);sT('cli-tipo-doc-texto',v);};
   window.imprimir=function(){
     var num=document.getElementById('doc-numero')?.textContent||'cotizacion';
-    var t=document.title;document.title='Juanytours-'+num.trim();window.print();document.title=t;
+    var t=document.title;document.title=MARCA+'-'+num.trim();window.print();document.title=t;
   };
   document.querySelectorAll('[data-field="monto"],[data-field="cantidad"]').forEach(function(el){
     el.addEventListener('input',window.calcTotales);
@@ -1285,7 +1462,7 @@ async function exportarHTML() {
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-  <title>Juanytours — ${escHTML(numRaw)}</title>
+  <title>${escHTML(marca)} — ${escHTML(numRaw)}</title>
   <style>
 ${cssText}
 body{padding-top:52px!important;background:#DEE6EF;}
@@ -1320,14 +1497,14 @@ body{padding-top:52px!important;background:#DEE6EF;}
 </head>
 <body>
 <div class="exp-bar">
-  <span class="exp-titulo">Juanytours &mdash; ${escHTML(numRaw)}</span>
+  <span class="exp-titulo">${escHTML(marca)} &mdash; ${escHTML(numRaw)}</span>
   <div class="exp-btns">
     <span class="exp-nota">Los campos son editables &middot; los cambios no se guardan automáticamente</span>
     <button class="exp-btn exp-btn-print" onclick="imprimir()">&#x2B07; Imprimir / PDF</button>
   </div>
 </div>
 
-<div class="pagina${clasesVis}">${documentoHTML}</div>
+<div class="pagina pl-${pl}${clasesVis}">${documentoHTML}</div>
 
 <script>${scriptInline}<` + `/script>
 </body>
@@ -1337,7 +1514,7 @@ body{padding-top:52px!important;background:#DEE6EF;}
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement('a');
   a.href     = url;
-  a.download = `Juanytours-${numRaw.replace(/[^a-z0-9\-_]/gi, '_')}.html`;
+  a.download = `${_marcaArchivo()}-${numRaw.replace(/[^a-z0-9\-_]/gi, '_')}.html`;
   a.click();
   URL.revokeObjectURL(url);
   mostrarToast('✓ HTML descargado');

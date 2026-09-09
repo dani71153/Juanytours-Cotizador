@@ -4,9 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Cotizador — Juanytours</title>
-  <link rel="stylesheet" href="css/estilos.css?v=10" />
-  <link rel="stylesheet" href="css/biblioteca.css?v=10" />
-  <link rel="stylesheet" href="css/plantilla-laps.css?v=10" />
+  <link rel="stylesheet" href="css/estilos.css?v=11" />
+  <link rel="stylesheet" href="css/biblioteca.css?v=11" />
+  <link rel="stylesheet" href="css/plantilla-laps.css?v=11" />
 </head>
 <body>
 
@@ -169,6 +169,26 @@
 
         <!-- ══════════ PESTAÑA: DOCUMENTO ══════════ -->
         <div class="opc-panel opc-panel-visible" id="opc-panel-doc">
+
+          <div class="opc-seccion">
+            <div class="opc-sec-titulo">Hoja del PDF</div>
+            <div class="opc-campo-fila">
+              <label class="opc-campo">
+                <span class="opc-campo-lbl">Tama&ntilde;o</span>
+                <select class="opc-inp" id="opc-sel-hoja" onchange="cambiarHoja()">
+                  <!-- Generado por renderSelectorHoja() -->
+                </select>
+              </label>
+              <label class="opc-campo" style="flex:0 0 130px">
+                <span class="opc-campo-lbl">Orientaci&oacute;n</span>
+                <select class="opc-inp" id="opc-sel-orientacion" onchange="cambiarHoja()">
+                  <option value="portrait">Vertical</option>
+                  <option value="landscape">Horizontal</option>
+                </select>
+              </label>
+            </div>
+            <p class="opc-explica">Define el tama&ntilde;o real del PDF y del HTML exportado. La hoja en pantalla se ajusta para que veas la proporci&oacute;n.</p>
+          </div>
 
           <div class="opc-seccion">
             <div class="opc-sec-titulo">Encabezado</div>
@@ -369,13 +389,13 @@
   <!-- ===== TOAST DE GUARDADO ===== -->
   <div id="toast-guardado" class="toast-guardado no-print" style="display:none">&#x2713; Guardado</div>
 
-  <script src="data/empresa.js?v=10"></script>
-  <script src="shared/tasa.js?v=10"></script>
-  <script src="database/db.js?v=10"></script>
-  <script src="database/cotizaciones.js?v=10"></script>
-  <script src="permanencia/sesion.js?v=10"></script>
-  <script src="permanencia/borrador.js?v=10"></script>
-  <script src="js/plantilla.js?v=10"></script>
-  <script src="js/app.js?v=10"></script>
+  <script src="data/empresa.js?v=11"></script>
+  <script src="shared/tasa.js?v=11"></script>
+  <script src="database/db.js?v=11"></script>
+  <script src="database/cotizaciones.js?v=11"></script>
+  <script src="permanencia/sesion.js?v=11"></script>
+  <script src="permanencia/borrador.js?v=11"></script>
+  <script src="js/plantilla.js?v=11"></script>
+  <script src="js/app.js?v=11"></script>
 </body>
 </html>

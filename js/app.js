@@ -198,6 +198,12 @@ function montarDocumento() {
   // La clase de plantilla vive en el contenedor, junto a las sin-*
   cont.classList.remove('pl-clasica', 'pl-laps');
   cont.classList.add('pl-' + pl);
+
+  // Deja lista la regla @page y el ancho en pantalla. En el primer
+  // montaje fija el valor por defecto; en los siguientes conserva
+  // el que ya tuviera el contenedor.
+  const h = cont.dataset.hoja || HOJA_DEFECTO;
+  aplicarHoja(h, cont.dataset.orientacion || 'portrait');
 }
 
 // =============================================
@@ -635,6 +641,7 @@ function capturarEstado() {
     notas:       getCE('doc-notas'),
     ocultar:     leerOpcionesVis(),
     idCliente:   leerEtiquetaIdCliente(),
+    ...leerHoja(),
     // Perfil de empresa con el que se creó (define la plantilla)
     perfil:      Perfiles.activoId(),
     // Campos que sólo usa la plantilla LAPS; en la clásica quedan vacíos
@@ -688,6 +695,7 @@ function restaurarEstado(datos) {
   // (formato antiguo: sólo existía "ocultarTasa")
   aplicarOpcionesVis(datos.ocultar || { tasa: !!datos.ocultarTasa });
   aplicarEtiquetaIdCliente(datos.idCliente || 'RNC');
+  aplicarHoja(datos.hoja || HOJA_DEFECTO, datos.orientacion || 'portrait');
 
   calcularTotales();
 }
@@ -729,6 +737,7 @@ function iniciarEstadoVacio(numero = null) {
 
   aplicarOpcionesVis({});
   aplicarEtiquetaIdCliente('RNC');
+  aplicarHoja(HOJA_DEFECTO, 'portrait');
 
   calcularTotales();
   TabManager.actualizarNumero(num);
@@ -1191,6 +1200,70 @@ function actualizarToggleTasa() {
 }
 
 // =============================================
+//  TAMAÑO DE HOJA
+//  @page no se puede condicionar con clases, así que la regla
+//  se reescribe en una etiqueta <style> propia. Es lo que decide
+//  el tamaño real del PDF al imprimir.
+// =============================================
+const HOJAS = {
+  A4:    { css: 'A4',     ancho: 210, alto: 297, nombre: 'A4 (210 × 297 mm)' },
+  Carta: { css: 'letter', ancho: 216, alto: 279, nombre: 'Carta (8.5 × 11 pulg)' },
+  Legal: { css: 'legal',  ancho: 216, alto: 356, nombre: 'Legal (8.5 × 14 pulg)' }
+};
+
+const HOJA_DEFECTO = 'A4';
+const ANCHO_BASE_PX = 860;   // ancho en pantalla de una A4 vertical
+
+// Regla @page para el tamaño y la orientación pedidos
+function _reglaPagina(hoja, orientacion) {
+  const h = HOJAS[hoja] || HOJAS[HOJA_DEFECTO];
+  const o = orientacion === 'landscape' ? 'landscape' : 'portrait';
+  return `@page { size: ${h.css} ${o}; margin: 12mm 10mm; }`;
+}
+
+// Ancho en pantalla proporcional al papel, para que la vista se parezca
+function _anchoHojaPx(hoja, orientacion) {
+  const h  = HOJAS[hoja] || HOJAS[HOJA_DEFECTO];
+  const mm = orientacion === 'landscape' ? h.alto : h.ancho;
+  return Math.round(ANCHO_BASE_PX * mm / HOJAS.A4.ancho);
+}
+
+function aplicarHoja(hoja, orientacion) {
+  const h = HOJAS[hoja] ? hoja : HOJA_DEFECTO;
+  const o = orientacion === 'landscape' ? 'landscape' : 'portrait';
+
+  let est = document.getElementById('estilo-hoja');
+  if (!est) {
+    est = document.createElement('style');
+    est.id = 'estilo-hoja';
+    document.head.appendChild(est);   // al final del head: gana sobre estilos.css
+  }
+  est.textContent = _reglaPagina(h, o);
+
+  const doc = document.getElementById('documento');
+  if (doc) {
+    doc.style.width  = _anchoHojaPx(h, o) + 'px';
+    doc.dataset.hoja = h;
+    doc.dataset.orientacion = o;
+  }
+}
+
+function leerHoja() {
+  const doc = document.getElementById('documento');
+  return {
+    hoja:        doc?.dataset.hoja || HOJA_DEFECTO,
+    orientacion: doc?.dataset.orientacion || 'portrait'
+  };
+}
+
+function cambiarHoja() {
+  const h = document.getElementById('opc-sel-hoja')?.value;
+  const o = document.getElementById('opc-sel-orientacion')?.value;
+  aplicarHoja(h, o);
+  TabManager.marcarSinGuardar();
+}
+
+// =============================================
 //  VISTA DE IMPRESIÓN
 //  Aplica en pantalla las mismas reglas que @media print,
 //  para que lo que se ve sea lo que se imprime.
@@ -1234,6 +1307,9 @@ function renderModalOpciones() {
 
   // Etiqueta de identificación del cliente
   aplicarEtiquetaIdCliente(leerEtiquetaIdCliente());
+
+  // Tamaño de hoja
+  renderSelectorHoja();
 
   // Empresa activa + numeración + datos de empresa / banco
   renderSelectorPerfil();
@@ -1285,6 +1361,19 @@ function actualizarPreviewNumero() {
   const n = parseInt(inp.value, 10);
   const prefijo = window._DEFAULTS?.prefijo ?? 'COT-';
   prev.value = (isNaN(n) || n < 1) ? '—' : prefijo + String(n).padStart(3, '0');
+}
+
+// Refleja el tamaño de hoja actual en el modal
+function renderSelectorHoja() {
+  const selH = document.getElementById('opc-sel-hoja');
+  const selO = document.getElementById('opc-sel-orientacion');
+  if (!selH || !selO) return;
+
+  const actual = leerHoja();
+  selH.innerHTML = Object.entries(HOJAS)
+    .map(([id, h]) => `<option value="${id}"${id === actual.hoja ? ' selected' : ''}>${escHTML(h.nombre)}</option>`)
+    .join('');
+  selO.value = actual.orientacion;
 }
 
 // Llena el desplegable de empresas del modal
@@ -1586,6 +1675,8 @@ async function exportarHTML() {
   const clasesVis = OPC_VIS.filter(k => vis[k]).map(k => ' sin-' + k).join('');
   const pl        = E.plantilla || 'clasica';
   const marca     = E.empresa?.nombre || 'Cotizacion';
+  const hoja      = leerHoja();
+  const anchoHoja = _anchoHojaPx(hoja.hoja, hoja.orientacion);
 
   // Mismo markup que el editor — ver js/plantilla.js
   const documentoHTML = Plantilla.interior({
@@ -1678,7 +1769,9 @@ body{padding-top:52px!important;background:#DEE6EF;}
   .sin-iban.sin-swift .pago-cuentas{grid-template-columns:1fr!important;}
   .sin-swift .pc-iban{border-right:none!important;}
   .sin-iban.sin-swift .pc-cuenta{border-right:none!important;}
+  .pagina{width:100%!important;}
 }
+${_reglaPagina(hoja.hoja, hoja.orientacion)}
   </style>
 </head>
 <body>
@@ -1690,7 +1783,7 @@ body{padding-top:52px!important;background:#DEE6EF;}
   </div>
 </div>
 
-<div class="pagina pl-${pl}${clasesVis}">${documentoHTML}</div>
+<div class="pagina pl-${pl}${clasesVis}" style="width:${anchoHoja}px">${documentoHTML}</div>
 
 <script>${scriptInline}<` + `/script>
 </body>

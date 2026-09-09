@@ -1218,7 +1218,7 @@ const ANCHO_BASE_PX = 860;   // ancho en pantalla de una A4 vertical
 function _reglaPagina(hoja, orientacion) {
   const h = HOJAS[hoja] || HOJAS[HOJA_DEFECTO];
   const o = orientacion === 'landscape' ? 'landscape' : 'portrait';
-  return `@page { size: ${h.css} ${o}; margin: 12mm 10mm; }`;
+  return `@page { size: ${h.css} ${o}; margin: 0; }`;
 }
 
 // Ancho en pantalla proporcional al papel, para que la vista se parezca
@@ -1769,7 +1769,7 @@ body{padding-top:52px!important;background:#DEE6EF;}
   .sin-iban.sin-swift .pago-cuentas{grid-template-columns:1fr!important;}
   .sin-swift .pc-iban{border-right:none!important;}
   .sin-iban.sin-swift .pc-cuenta{border-right:none!important;}
-  .pagina{width:100%!important;}
+  .pagina{width:100%!important;padding:calc(12mm + 20px) calc(10mm + 24px)!important;}
 }
 ${_reglaPagina(hoja.hoja, hoja.orientacion)}
   </style>

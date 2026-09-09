@@ -23,7 +23,7 @@ window.PERFILES = {
 
     empresa: {
       nombre:    "Juanytours",
-      rnc:       "133029189",
+      rnc:       "132-74585-1",
       // Rótulo que se imprime antes del número: "RNC" o "CÉDULA"
       rncLabel:  "RNC",
       direccion: "El Millón, Calle Caña Dulce",

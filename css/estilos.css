@@ -868,7 +868,9 @@ body {
   .pagina {
     width: 100% !important;
     margin: 0 !important;
-    padding: 20px 24px !important;
+    /* 12mm/10mm eran el margen de @page; ahora van aquí para que el
+       navegador no tenga sitio donde dibujar su encabezado y su pie. */
+    padding: calc(12mm + 20px) calc(10mm + 24px) !important;
     box-shadow: none !important;
     border-top: 4px solid var(--azul) !important;
   }
@@ -924,9 +926,12 @@ body {
   .sin-swift          .pc-iban   { border-right: none !important; }
   .sin-iban.sin-swift .pc-cuenta { border-right: none !important; }
 
+  /* margin:0 suprime el encabezado y el pie que el navegador
+     imprime (título, fecha, URL y nº de página). El margen real
+     lo aporta el padding de .pagina. */
   @page {
     size: A4 portrait;
-    margin: 12mm 10mm;
+    margin: 0;
   }
 }
 

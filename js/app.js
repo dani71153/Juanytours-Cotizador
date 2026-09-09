@@ -73,13 +73,14 @@ const Perfiles = {
 
   // Deja el perfil activo y vuelve a montar el documento con su
   // plantilla. No conserva lo escrito: eso lo decide quien llama.
-  _aplicar(id) {
+  async _aplicar(id) {
     localStorage.setItem(this.KEY, id);
     this._resolver(id);
     EmpresaCfg.aplicarGuardado();
     montarDocumento();
     poblarEmpresa(window.EMPRESA);
     iniciarListenersDocumento();
+    await _sincronizarContador();   // cada empresa tiene su propia numeración
   },
 
   // Cambia de empresa conservando lo que el usuario ya escribió
@@ -88,7 +89,7 @@ const Perfiles = {
     await TabManager._autoGuardar();
 
     const estado = capturarEstado();
-    this._aplicar(id);
+    await this._aplicar(id);
     restaurarEstado(estado);
 
     renderModalOpciones();
@@ -96,16 +97,16 @@ const Perfiles = {
   },
 
   // Deja listo un perfil para una cotización nueva (sin estado previo)
-  seleccionar(id) {
+  async seleccionar(id) {
     if (!window.PERFILES?.[id]) return;
-    this._aplicar(id);
+    await this._aplicar(id);
   },
 
   // Al abrir una cotización guardada: si se creó con otra empresa,
   // se cambia para que salga con su plantilla original.
-  asegurar(id) {
+  async asegurar(id) {
     if (!id || !window.PERFILES?.[id] || id === this.activoId()) return false;
-    this._aplicar(id);
+    await this._aplicar(id);
     return true;
   }
 };
@@ -161,7 +162,7 @@ async function crearCotizacionCon(id) {
   // seleccionar() lo remonta y perderíamos lo que hubiera dentro.
   await TabManager._autoGuardar();
 
-  if (id !== Perfiles.activoId()) Perfiles.seleccionar(id);
+  if (id !== Perfiles.activoId()) await Perfiles.seleccionar(id);
 
   await TabManager.nuevaTab(null, null, true);
 }
@@ -228,8 +229,9 @@ function poblarEmpresa(e) {
   // Guardar defaults para nuevas cotizaciones
   window._DEFAULTS = {
     tasaOficial: fi.tipoCambioDefault || 60.65,
-    prefijo:     nu.prefijo     || 'COT-',
-    siguiente:   nu.siguiente   || 1,
+    // ?? y no ||: un prefijo vacío es válido (LAPS numera sin prefijo)
+    prefijo:     nu.prefijo   ?? 'COT-',
+    siguiente:   nu.siguiente || 1,
     itbis:       fi.itbisPorcentaje || 18
   };
 
@@ -325,6 +327,11 @@ const EmpresaCfg = {
 
 function guardarEmpresaOpciones() {
   EmpresaCfg.guardarDesdeInputs();
+
+  const inp = document.getElementById('opc-prox-numero');
+  if (inp && inp.value !== '') fijarProximoNumero(inp.value);
+
+  renderProximoNumero();
   mostrarToast('✓ Datos de empresa aplicados');
 }
 
@@ -340,7 +347,7 @@ function restablecerEmpresaOpciones() {
 //  documento: se atenúa en pantalla y desaparece
 //  al imprimir / exportar. El dato nunca se borra.
 // =============================================
-const OPC_VIS = ['tasa', 'numero', 'ref', 'ncf', 'excento', 'gravado', 'itbis', 'iban', 'swift'];
+const OPC_VIS = ['tasa', 'numero', 'ref', 'ncf', 'excento', 'gravado', 'itbis', 'dop', 'usd', 'iban', 'swift'];
 
 // Lee el estado de visibilidad actual desde las clases del documento
 function leerOpcionesVis() {
@@ -366,12 +373,18 @@ function toggleOpcion(clave) {
   TabManager.marcarSinGuardar();
 }
 
-// Atajos: "Total uniforme" deja sólo TOTAL DOP / TOTAL USD
+// Atajos de la sección de totales.
+//  · uniforme → oculta el desglose y deja sólo el total en moneda local
+//  · desglose → vuelve a mostrarlo todo
 function aplicarPresetTotales(preset) {
   const doc = document.getElementById('documento');
   if (!doc) return;
-  const ocultar = preset === 'uniforme';
-  ['excento', 'gravado', 'itbis'].forEach(k => doc.classList.toggle('sin-' + k, ocultar));
+  const uniforme = preset === 'uniforme';
+
+  ['excento', 'gravado', 'itbis'].forEach(k => doc.classList.toggle('sin-' + k, uniforme));
+  doc.classList.remove('sin-dop');                 // el total siempre se ve
+  if (!uniforme) doc.classList.remove('sin-usd');  // desglose = todo visible
+
   actualizarTogglesOpciones();
   TabManager.marcarSinGuardar();
 }
@@ -389,9 +402,12 @@ function actualizarTogglesOpciones() {
   const exp = document.getElementById('opc-explica-totales');
   if (exp) {
     const uniforme = vis.excento && vis.gravado && vis.itbis;
-    exp.textContent = uniforme
-      ? 'Modo total uniforme: sólo se imprime el TOTAL. El ITBIS se sigue calculando y está incluido en el monto.'
-      : 'Lo que ocultes desaparece del PDF y del HTML exportado, pero se sigue sumando al TOTAL.';
+    const sinTotal = vis.dop && vis.usd;
+    exp.textContent = sinTotal
+      ? '⚠ Ocultaste los dos totales: el documento saldrá sin importe final.'
+      : uniforme
+        ? 'Modo total uniforme: sólo se imprime el TOTAL. El ITBIS se sigue calculando y está incluido en el monto.'
+        : 'Lo que ocultes desaparece del PDF y del HTML exportado, pero se sigue sumando al TOTAL.';
   }
 }
 
@@ -511,7 +527,7 @@ const TabManager = {
     } else {
       this._modoEditor(true);
       if (datosIniciales) {
-        Perfiles.asegurar(datosIniciales.perfil);   // plantilla con la que se creó
+        await Perfiles.asegurar(datosIniciales.perfil);   // plantilla con la que se creó
         restaurarEstado(datosIniciales);
       } else {
         // Tab restaurado de sesión: cargar desde IndexedDB si tiene dbId
@@ -520,7 +536,7 @@ const TabManager = {
           try {
             const reg = await CotDB.obtener(tab.dbId);
             if (reg) {
-              Perfiles.asegurar(reg.datos?.perfil);
+              await Perfiles.asegurar(reg.datos?.perfil);
               restaurarEstado(reg.datos);
               return;
             }
@@ -1175,6 +1191,20 @@ function actualizarToggleTasa() {
 }
 
 // =============================================
+//  VISTA DE IMPRESIÓN
+//  Aplica en pantalla las mismas reglas que @media print,
+//  para que lo que se ve sea lo que se imprime.
+// =============================================
+function toggleVistaImpresion() {
+  const activa = document.body.classList.toggle('vista-impresion');
+  const btn = document.getElementById('btn-vista');
+  if (btn) {
+    btn.classList.toggle('activa', activa);
+    btn.innerHTML = activa ? '\u270E Volver a editar' : '\u{1F441} Vista final';
+  }
+}
+
+// =============================================
 //  MODAL OPCIONES DE IMPRESIÓN
 // =============================================
 function abrirModalOpciones() {
@@ -1205,8 +1235,9 @@ function renderModalOpciones() {
   // Etiqueta de identificación del cliente
   aplicarEtiquetaIdCliente(leerEtiquetaIdCliente());
 
-  // Empresa activa + datos de empresa / banco
+  // Empresa activa + numeración + datos de empresa / banco
   renderSelectorPerfil();
+  renderProximoNumero();
   EmpresaCfg.poblarInputs();
 
   // Lista de servicios
@@ -1236,6 +1267,24 @@ function renderModalOpciones() {
        </button>`;
     lista.appendChild(div);
   });
+}
+
+// Muestra el próximo número de la empresa activa y su vista previa
+function renderProximoNumero() {
+  const inp = document.getElementById('opc-prox-numero');
+  if (!inp) return;
+  inp.value = _contadorActual() + 1;
+  inp.oninput = actualizarPreviewNumero;
+  actualizarPreviewNumero();
+}
+
+function actualizarPreviewNumero() {
+  const inp  = document.getElementById('opc-prox-numero');
+  const prev = document.getElementById('opc-prox-preview');
+  if (!inp || !prev) return;
+  const n = parseInt(inp.value, 10);
+  const prefijo = window._DEFAULTS?.prefijo ?? 'COT-';
+  prev.value = (isNaN(n) || n < 1) ? '—' : prefijo + String(n).padStart(3, '0');
 }
 
 // Llena el desplegable de empresas del modal
@@ -1405,32 +1454,78 @@ function _marcaArchivo() {
   return n.replace(/[^a-z0-9]+/gi, '_').replace(/^_+|_+$/g, '') || 'Cotizacion';
 }
 
+// Cada empresa lleva su propia numeración: si compartieran contador,
+// el "siguiente" de un perfil arrastraría la numeración del otro.
+function _claveContador(perfil) {
+  return 'jt_num_counter_' + (perfil || 'default');
+}
+
+// Contador de la empresa activa, leyéndolo de nuevo si cambió de perfil
+function _contadorActual() {
+  const perfil = Perfiles.activoId();
+  if (window._cotNumPerfil !== perfil) {
+    const d = window._DEFAULTS || {};
+    window._cotNumCounter = Math.max(
+      (d.siguiente || 1) - 1,
+      parseInt(localStorage.getItem(_claveContador(perfil)) || '0', 10) || 0
+    );
+    window._cotNumPerfil = perfil;
+  }
+  return window._cotNumCounter;
+}
+
 function _generarNumero() {
-  const d      = window._DEFAULTS || {};
-  const prefijo = d.prefijo || 'COT-';
-  window._cotNumCounter = (window._cotNumCounter || 0) + 1;
-  localStorage.setItem('jt_num_counter', window._cotNumCounter);   // persiste entre recargas
+  const d       = window._DEFAULTS || {};
+  const prefijo = d.prefijo ?? 'COT-';
+  const perfil  = Perfiles.activoId();
+
+  window._cotNumCounter = _contadorActual() + 1;
+  window._cotNumPerfil  = perfil;
+  localStorage.setItem(_claveContador(perfil), window._cotNumCounter);
+
   return prefijo + String(window._cotNumCounter).padStart(3, '0');
+}
+
+// Fija manualmente el próximo número de la empresa activa
+function fijarProximoNumero(n) {
+  const valor = parseInt(n, 10);
+  if (isNaN(valor) || valor < 1) return false;
+  const perfil = Perfiles.activoId();
+  window._cotNumCounter = valor - 1;
+  window._cotNumPerfil  = perfil;
+  localStorage.setItem(_claveContador(perfil), window._cotNumCounter);
+  return true;
 }
 
 // Lee el número más alto guardado (IndexedDB + localStorage) para evitar duplicados
 async function _sincronizarContador() {
-  const d      = window._DEFAULTS || {};
-  const prefijo = d.prefijo || 'COT-';
+  const d       = window._DEFAULTS || {};
+  const prefijo = d.prefijo ?? 'COT-';
+  const perfil  = Perfiles.activoId();
+
   let max = Math.max(
     (d.siguiente || 1) - 1,
-    parseInt(localStorage.getItem('jt_num_counter') || '0')
+    parseInt(localStorage.getItem(_claveContador(perfil)) || '0', 10) || 0
   );
+
   try {
     const todas = await CotDB.listar();
     todas.forEach(reg => {
-      if (reg.numero && reg.numero.startsWith(prefijo)) {
-        const n = parseInt(reg.numero.slice(prefijo.length));
-        if (!isNaN(n)) max = Math.max(max, n);
-      }
+      // Sólo cuentan las de esta empresa. Las guardadas antes de que
+      // existieran los perfiles pertenecen al perfil por defecto.
+      const suPerfil = reg.datos?.perfil || window.PERFIL_DEFECTO;
+      if (suPerfil !== perfil) return;
+
+      const numero = String(reg.numero || '');
+      if (prefijo && !numero.startsWith(prefijo)) return;
+
+      const n = parseInt(numero.slice(prefijo.length), 10);
+      if (!isNaN(n)) max = Math.max(max, n);
     });
   } catch (e) { /* si IndexedDB aún no tiene datos, seguimos con max */ }
+
   window._cotNumCounter = max;
+  window._cotNumPerfil  = perfil;
 }
 
 function _metaDatos(estado) {
@@ -1566,14 +1661,17 @@ body{padding-top:52px!important;background:#DEE6EF;}
 .exp-btn-print:hover{opacity:.85;}
 .sin-tasa .tot-izq,.sin-numero .doc-numero-wrap,.sin-ref .fr-fila-ref,.sin-ncf .cli-fila-ncf,
 .sin-excento .tot-fila-excento,.sin-gravado .tot-fila-gravado,.sin-itbis .tot-fila-itbis,
+.sin-dop .tot-fila-dop,.sin-usd .tot-fila-usd,
 .sin-iban .pc-iban,.sin-swift .pc-swift{opacity:.3;}
 @media print{
   .exp-bar{display:none!important;}
   body{padding-top:0!important;background:#fff!important;}
   .sin-tasa .tot-izq,.sin-numero .doc-numero-wrap,.sin-ref .fr-fila-ref,
-  .sin-ncf .cli-fila-ncf{visibility:hidden!important;opacity:1!important;}
+  .sin-ncf .cli-fila-ncf{display:none!important;opacity:1!important;}
+  .tot-der{margin-left:auto;}
   .sin-excento .tot-fila-excento,.sin-gravado .tot-fila-gravado,
-  .sin-itbis .tot-fila-itbis{display:none!important;}
+  .sin-itbis .tot-fila-itbis,
+  .sin-dop .tot-fila-dop,.sin-usd .tot-fila-usd{display:none!important;}
   .sin-iban .pc-iban,.sin-swift .pc-swift{display:none!important;}
   .sin-iban .pago-cuentas{grid-template-columns:1fr auto!important;}
   .sin-swift .pago-cuentas{grid-template-columns:1fr 1fr!important;}

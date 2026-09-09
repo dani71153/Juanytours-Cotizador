@@ -555,7 +555,9 @@ body {
 .fila-oculta .td-cantidad,
 .fila-oculta .td-monto { color: #C0C8D0 !important; font-style: italic; }
 
-.tot-der { min-width: 320px; }
+/* margin-left:auto mantiene los totales a la derecha aunque
+   .tot-izq (el tipo de cambio) esté oculto y el flex quede con un hijo */
+.tot-der { min-width: 320px; margin-left: auto; }
 
 .tabla-totales {
   width: 100%;
@@ -897,14 +899,18 @@ body {
   .fila-oculta td { visibility: hidden !important; }
 
   /* ── Elementos ocultados desde "Opciones de impresión" ── */
+  /* display:none y no visibility:hidden: así el hueco se cierra
+     en vez de quedar un espacio en blanco del tamaño del elemento. */
   .sin-tasa   .tot-izq,
   .sin-numero .doc-numero-wrap,
   .sin-ref    .fr-fila-ref,
-  .sin-ncf    .cli-fila-ncf { visibility: hidden !important; opacity: 1 !important; }
+  .sin-ncf    .cli-fila-ncf { display: none !important; opacity: 1 !important; }
 
   .sin-excento .tot-fila-excento,
   .sin-gravado .tot-fila-gravado,
-  .sin-itbis   .tot-fila-itbis { display: none !important; }
+  .sin-itbis   .tot-fila-itbis,
+  .sin-dop     .tot-fila-dop,
+  .sin-usd     .tot-fila-usd { display: none !important; }
 
   /* IBAN / SWIFT ocultos: se retiran del grid y las columnas se reacomodan */
   .sin-iban  .pc-iban,
@@ -938,6 +944,8 @@ body {
   .sin-excento .tot-fila-excento,
   .sin-gravado .tot-fila-gravado,
   .sin-itbis   .tot-fila-itbis,
+  .sin-dop     .tot-fila-dop,
+  .sin-usd     .tot-fila-usd,
   .sin-iban    .pc-iban,
   .sin-swift   .pc-swift {
     opacity: .3;
@@ -950,6 +958,8 @@ body {
   .sin-excento .tot-fila-excento:hover,
   .sin-gravado .tot-fila-gravado:hover,
   .sin-itbis   .tot-fila-itbis:hover,
+  .sin-dop     .tot-fila-dop:hover,
+  .sin-usd     .tot-fila-usd:hover,
   .sin-iban    .pc-iban:hover,
   .sin-swift   .pc-swift:hover { opacity: .75; }
 }
@@ -1168,3 +1178,51 @@ body {
   line-height: 1;
 }
 .perfil-opcion:hover .po-flecha { color: var(--azul); }
+
+/* =============================================
+   VISTA DE IMPRESIÓN
+   Reproduce en pantalla exactamente lo que hará @media print,
+   para que el espaciado no cambie al exportar. La barra de
+   control sigue visible para poder salir de la vista.
+   (Mismo bloque que @media print, con el prefijo del body.)
+   ============================================= */
+body.vista-impresion #documento .sel-tipo,
+body.vista-impresion #documento .sel-tipo-item,
+body.vista-impresion #documento .th-tipo,
+body.vista-impresion #documento .td-tipo,
+body.vista-impresion #documento .th-del,
+body.vista-impresion #documento .td-del,
+body.vista-impresion #documento .tasa-indicador,
+body.vista-impresion #documento .btn-eliminar,
+body.vista-impresion #documento .btn-mover { display: none !important; }
+
+body.vista-impresion .fila-oculta td { visibility: hidden !important; }
+
+body.vista-impresion .sin-tasa    .tot-izq,
+body.vista-impresion .sin-numero  .doc-numero-wrap,
+body.vista-impresion .sin-ref     .fr-fila-ref,
+body.vista-impresion .sin-ncf     .cli-fila-ncf,
+body.vista-impresion .sin-excento .tot-fila-excento,
+body.vista-impresion .sin-gravado .tot-fila-gravado,
+body.vista-impresion .sin-itbis   .tot-fila-itbis,
+body.vista-impresion .sin-dop     .tot-fila-dop,
+body.vista-impresion .sin-usd     .tot-fila-usd,
+body.vista-impresion .sin-iban    .pc-iban,
+body.vista-impresion .sin-swift   .pc-swift { display: none !important; opacity: 1 !important; }
+
+body.vista-impresion .sin-iban           .pago-cuentas { grid-template-columns: 1fr auto; }
+body.vista-impresion .sin-swift          .pago-cuentas { grid-template-columns: 1fr 1fr; }
+body.vista-impresion .sin-iban.sin-swift .pago-cuentas { grid-template-columns: 1fr; }
+body.vista-impresion .sin-swift          .pc-iban   { border-right: none; }
+body.vista-impresion .sin-iban.sin-swift .pc-cuenta { border-right: none; }
+
+/* Aviso de que se está viendo el resultado final */
+body.vista-impresion #documento {
+  outline: 2px dashed #B9CDE3;
+  outline-offset: 10px;
+}
+
+.btn-vista.activa {
+  background: var(--azul-dark, #002B57);
+  color: #fff;
+}

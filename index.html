@@ -4,9 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Cotizador — Juanytours</title>
-  <link rel="stylesheet" href="css/estilos.css?v=7" />
-  <link rel="stylesheet" href="css/biblioteca.css?v=7" />
-  <link rel="stylesheet" href="css/plantilla-laps.css?v=7" />
+  <link rel="stylesheet" href="css/estilos.css?v=10" />
+  <link rel="stylesheet" href="css/biblioteca.css?v=10" />
+  <link rel="stylesheet" href="css/plantilla-laps.css?v=10" />
 </head>
 <body>
 
@@ -29,6 +29,7 @@
       <button class="btn-ctrl btn-nota"     onclick="agregarNota()">&#43; Nota</button>
       <button class="btn-ctrl btn-tasa"     onclick="TasaCambio.mostrarEditor()">&#x1F4B1; Tasa</button>
       <button class="btn-ctrl btn-opciones" onclick="abrirModalOpciones()">&#x2699; Opciones</button>
+      <button class="btn-ctrl btn-vista" id="btn-vista" onclick="toggleVistaImpresion()">&#x1F441; Vista final</button>
       <div class="export-wrap" id="export-wrap">
         <button class="btn-ctrl btn-exportar" onclick="toggleExportMenu(event)">&#x2B07; Exportar &#x25BE;</button>
         <div class="export-menu" id="export-menu">
@@ -230,6 +231,14 @@
               <span class="opc-item-label">ITBIS</span>
               <button class="opc-toggle opc-toggle-on" id="opc-toggle-itbis" onclick="toggleOpcion('itbis')">Visible</button>
             </div>
+            <div class="opc-item">
+              <span class="opc-item-label">Total en pesos <em class="opc-hint">(DOP)</em></span>
+              <button class="opc-toggle opc-toggle-on" id="opc-toggle-dop" onclick="toggleOpcion('dop')">Visible</button>
+            </div>
+            <div class="opc-item">
+              <span class="opc-item-label">Total en d&oacute;lares <em class="opc-hint">(USD)</em></span>
+              <button class="opc-toggle opc-toggle-on" id="opc-toggle-usd" onclick="toggleOpcion('usd')">Visible</button>
+            </div>
             <div class="opc-atajos">
               <button class="opc-atajo" onclick="aplicarPresetTotales('uniforme')">Total uniforme</button>
               <button class="opc-atajo" onclick="aplicarPresetTotales('desglose')">Desglose completo</button>
@@ -282,6 +291,21 @@
               <span class="opc-campo-lbl">P&aacute;guese a</span>
               <input type="text" class="opc-inp" id="opc-ban-pague" placeholder="Juanytours" />
             </label>
+          </div>
+
+          <div class="opc-seccion">
+            <div class="opc-sec-titulo">Numeraci&oacute;n</div>
+            <div class="opc-campo-fila">
+              <label class="opc-campo" style="flex:0 0 140px">
+                <span class="opc-campo-lbl">Pr&oacute;ximo n&uacute;mero</span>
+                <input type="number" min="1" step="1" class="opc-inp" id="opc-prox-numero" />
+              </label>
+              <label class="opc-campo">
+                <span class="opc-campo-lbl">Quedar&iacute;a como</span>
+                <input type="text" class="opc-inp" id="opc-prox-preview" readonly />
+              </label>
+            </div>
+            <p class="opc-explica">Cada empresa lleva su propia numeraci&oacute;n. Se aplica al guardar, y afecta a las cotizaciones nuevas &mdash; no cambia las ya creadas.</p>
           </div>
 
           <div class="opc-seccion">
@@ -345,13 +369,13 @@
   <!-- ===== TOAST DE GUARDADO ===== -->
   <div id="toast-guardado" class="toast-guardado no-print" style="display:none">&#x2713; Guardado</div>
 
-  <script src="data/empresa.js?v=7"></script>
-  <script src="shared/tasa.js?v=7"></script>
-  <script src="database/db.js?v=7"></script>
-  <script src="database/cotizaciones.js?v=7"></script>
-  <script src="permanencia/sesion.js?v=7"></script>
-  <script src="permanencia/borrador.js?v=7"></script>
-  <script src="js/plantilla.js?v=7"></script>
-  <script src="js/app.js?v=7"></script>
+  <script src="data/empresa.js?v=10"></script>
+  <script src="shared/tasa.js?v=10"></script>
+  <script src="database/db.js?v=10"></script>
+  <script src="database/cotizaciones.js?v=10"></script>
+  <script src="permanencia/sesion.js?v=10"></script>
+  <script src="permanencia/borrador.js?v=10"></script>
+  <script src="js/plantilla.js?v=10"></script>
+  <script src="js/app.js?v=10"></script>
 </body>
 </html>

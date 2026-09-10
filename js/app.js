@@ -269,7 +269,10 @@ const EmpresaCfg = {
     'opc-ban-dop-lbl':  ['banco',   'cuentaDOPLabel'],
     'opc-ban-dop':      ['banco',   'cuentaDOP'],
     'opc-ban-iban-dop': ['banco',   'ibanDOP'],
-    'opc-ban-swift':    ['banco',   'swift']
+    'opc-ban-swift':    ['banco',   'swift'],
+    // Pie de firmas: sólo lo usa la plantilla LAPS
+    'opc-emp-vendedor': ['defectos', 'vendedor'],
+    'opc-emp-valido':   ['defectos', 'validoHasta']
   },
 
   // Todos los overrides, indexados por perfil
@@ -289,7 +292,9 @@ const EmpresaCfg = {
     if (!E) return;
     Object.values(this.CAMPOS).forEach(([sec, key]) => {
       const val = cfg[sec]?.[key];
-      if (val !== undefined && E[sec]) E[sec][key] = val;
+      if (val === undefined) return;
+      E[sec] = E[sec] || {};        // p.ej. "defectos" no existe en todos los perfiles
+      E[sec][key] = val;
     });
   },
 
@@ -311,7 +316,8 @@ const EmpresaCfg = {
       if (!inp) return;
       const val = inp.value.trim();
       (cfg[sec] = cfg[sec] || {})[key] = val;
-      if (E[sec]) E[sec][key] = val;
+      E[sec] = E[sec] || {};
+      E[sec][key] = val;
     });
     try {
       const todo = this.leerTodo();
@@ -334,6 +340,12 @@ const EmpresaCfg = {
 function guardarEmpresaOpciones() {
   EmpresaCfg.guardarDesdeInputs();
 
+  // Si el documento abierto aún no tiene vendedor, hereda el nuevo
+  // valor por defecto; si ya tiene uno escrito, no se toca.
+  const def = window.EMPRESA?.defectos || {};
+  if (!getCE('doc-vendedor')     && def.vendedor)    setCE('doc-vendedor',     def.vendedor);
+  if (!getCE('doc-valido-hasta') && def.validoHasta) setCE('doc-valido-hasta', def.validoHasta);
+
   const inp = document.getElementById('opc-prox-numero');
   if (inp && inp.value !== '') fijarProximoNumero(inp.value);
 
@@ -353,7 +365,7 @@ function restablecerEmpresaOpciones() {
 //  documento: se atenúa en pantalla y desaparece
 //  al imprimir / exportar. El dato nunca se borra.
 // =============================================
-const OPC_VIS = ['tasa', 'numero', 'ref', 'ncf', 'excento', 'gravado', 'itbis', 'dop', 'usd', 'iban', 'swift'];
+const OPC_VIS = ['tasa', 'numero', 'ref', 'ncf', 'excento', 'gravado', 'itbis', 'dop', 'usd', 'iban', 'swift', 'firmas'];
 
 // Lee el estado de visibilidad actual desde las clases del documento
 function leerOpcionesVis() {
@@ -1311,6 +1323,12 @@ function renderModalOpciones() {
   // Tamaño de hoja
   renderSelectorHoja();
 
+  // Las opciones del pie de firmas sólo existen en la plantilla LAPS
+  const esLaps = Perfiles.plantilla() === 'laps';
+  document.querySelectorAll('.opc-solo-laps').forEach(el => {
+    el.style.display = esLaps ? '' : 'none';
+  });
+
   // Empresa activa + numeración + datos de empresa / banco
   renderSelectorPerfil();
   renderProximoNumero();
@@ -1753,7 +1771,8 @@ body{padding-top:52px!important;background:#DEE6EF;}
 .sin-tasa .tot-izq,.sin-numero .doc-numero-wrap,.sin-ref .fr-fila-ref,.sin-ncf .cli-fila-ncf,
 .sin-excento .tot-fila-excento,.sin-gravado .tot-fila-gravado,.sin-itbis .tot-fila-itbis,
 .sin-dop .tot-fila-dop,.sin-usd .tot-fila-usd,
-.sin-iban .pc-iban,.sin-swift .pc-swift{opacity:.3;}
+.sin-iban .pc-iban,.sin-swift .pc-swift,
+.sin-firmas .laps-firmas,.sin-firmas .laps-firma-espacio{opacity:.3;}
 @media print{
   .exp-bar{display:none!important;}
   body{padding-top:0!important;background:#fff!important;}
@@ -1762,7 +1781,8 @@ body{padding-top:52px!important;background:#DEE6EF;}
   .tot-der{margin-left:auto;}
   .sin-excento .tot-fila-excento,.sin-gravado .tot-fila-gravado,
   .sin-itbis .tot-fila-itbis,
-  .sin-dop .tot-fila-dop,.sin-usd .tot-fila-usd{display:none!important;}
+  .sin-dop .tot-fila-dop,.sin-usd .tot-fila-usd,
+  .sin-firmas .laps-firmas,.sin-firmas .laps-firma-espacio{display:none!important;}
   .sin-iban .pc-iban,.sin-swift .pc-swift{display:none!important;}
   .sin-iban .pago-cuentas{grid-template-columns:1fr auto!important;}
   .sin-swift .pago-cuentas{grid-template-columns:1fr 1fr!important;}

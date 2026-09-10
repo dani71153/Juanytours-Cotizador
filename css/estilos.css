@@ -912,7 +912,9 @@ body {
   .sin-gravado .tot-fila-gravado,
   .sin-itbis   .tot-fila-itbis,
   .sin-dop     .tot-fila-dop,
-  .sin-usd     .tot-fila-usd { display: none !important; }
+  .sin-usd     .tot-fila-usd,
+  .sin-firmas  .laps-firmas,
+  .sin-firmas  .laps-firma-espacio { display: none !important; }
 
   /* IBAN / SWIFT ocultos: se retiran del grid y las columnas se reacomodan */
   .sin-iban  .pc-iban,
@@ -952,7 +954,9 @@ body {
   .sin-dop     .tot-fila-dop,
   .sin-usd     .tot-fila-usd,
   .sin-iban    .pc-iban,
-  .sin-swift   .pc-swift {
+  .sin-swift   .pc-swift,
+  .sin-firmas  .laps-firmas,
+  .sin-firmas  .laps-firma-espacio {
     opacity: .3;
     transition: opacity .15s;
   }
@@ -966,7 +970,9 @@ body {
   .sin-dop     .tot-fila-dop:hover,
   .sin-usd     .tot-fila-usd:hover,
   .sin-iban    .pc-iban:hover,
-  .sin-swift   .pc-swift:hover { opacity: .75; }
+  .sin-swift   .pc-swift:hover,
+  .sin-firmas  .laps-firmas:hover,
+  .sin-firmas  .laps-firma-espacio:hover { opacity: .75; }
 }
 
 /* =============================================
@@ -1213,7 +1219,9 @@ body.vista-impresion .sin-itbis   .tot-fila-itbis,
 body.vista-impresion .sin-dop     .tot-fila-dop,
 body.vista-impresion .sin-usd     .tot-fila-usd,
 body.vista-impresion .sin-iban    .pc-iban,
-body.vista-impresion .sin-swift   .pc-swift { display: none !important; opacity: 1 !important; }
+body.vista-impresion .sin-swift   .pc-swift,
+body.vista-impresion .sin-firmas  .laps-firmas,
+body.vista-impresion .sin-firmas  .laps-firma-espacio { display: none !important; opacity: 1 !important; }
 
 body.vista-impresion .sin-iban           .pago-cuentas { grid-template-columns: 1fr auto; }
 body.vista-impresion .sin-swift          .pago-cuentas { grid-template-columns: 1fr 1fr; }

@@ -4,9 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Cotizador — Juanytours</title>
-  <link rel="stylesheet" href="css/estilos.css?v=13" />
-  <link rel="stylesheet" href="css/biblioteca.css?v=13" />
-  <link rel="stylesheet" href="css/plantilla-laps.css?v=13" />
+  <link rel="stylesheet" href="css/estilos.css?v=15" />
+  <link rel="stylesheet" href="css/biblioteca.css?v=15" />
+  <link rel="stylesheet" href="css/plantilla-laps.css?v=15" />
 </head>
 <body>
 
@@ -187,7 +187,14 @@
                 </select>
               </label>
             </div>
-            <p class="opc-explica">Define el tama&ntilde;o real del PDF y del HTML exportado. La hoja en pantalla se ajusta para que veas la proporci&oacute;n.</p>
+            <label class="opc-campo">
+              <span class="opc-campo-lbl">Ajuste al imprimir</span>
+              <select class="opc-inp" id="opc-sel-escala" onchange="cambiarEscalaImpresion()">
+                <option value="compacto">Compacto &mdash; letra m&aacute;s peque&ntilde;a, cabe m&aacute;s</option>
+                <option value="fiel">Fiel a la pantalla &mdash; id&eacute;ntico a lo que ves</option>
+              </select>
+            </label>
+            <p class="opc-explica">El tama&ntilde;o define el papel del PDF y del HTML exportado. <strong>Fiel a la pantalla</strong> imprime la hoja tal cual se ve, encogi&eacute;ndola para que quepa.</p>
           </div>
 
           <div class="opc-seccion">
@@ -220,13 +227,17 @@
             <p class="opc-explica">Cambia solo el r&oacute;tulo de esta cotizaci&oacute;n: usa C&Eacute;DULA cuando el cliente sea una persona f&iacute;sica.</p>
           </div>
 
-          <div class="opc-seccion opc-solo-laps">
-            <div class="opc-sec-titulo">Pie de firmas</div>
-            <div class="opc-item">
+          <div class="opc-seccion">
+            <div class="opc-sec-titulo">Pie del documento</div>
+            <div class="opc-item opc-solo-laps">
               <span class="opc-item-label">Firmas y recuadro inferior</span>
               <button class="opc-toggle opc-toggle-on" id="opc-toggle-firmas" onclick="toggleOpcion('firmas')">Visible</button>
             </div>
-            <p class="opc-explica">Oculta &laquo;Realizada por&raquo;, &laquo;Recibido por&raquo; y el recuadro de firma. El texto se conserva: vuelve al activarlo.</p>
+            <div class="opc-item">
+              <span class="opc-item-label">Notas adicionales</span>
+              <button class="opc-toggle opc-toggle-on" id="opc-toggle-notas" onclick="toggleOpcion('notas')">Visible</button>
+            </div>
+            <p class="opc-explica">Lo oculto se conserva y vuelve al reactivarlo. En LAPS, ocultar las firmas se lleva tambi&eacute;n el recuadro que las contiene.</p>
           </div>
 
           <div class="opc-seccion">
@@ -411,13 +422,13 @@
   <!-- ===== TOAST DE GUARDADO ===== -->
   <div id="toast-guardado" class="toast-guardado no-print" style="display:none">&#x2713; Guardado</div>
 
-  <script src="data/empresa.js?v=13"></script>
-  <script src="shared/tasa.js?v=13"></script>
-  <script src="database/db.js?v=13"></script>
-  <script src="database/cotizaciones.js?v=13"></script>
-  <script src="permanencia/sesion.js?v=13"></script>
-  <script src="permanencia/borrador.js?v=13"></script>
-  <script src="js/plantilla.js?v=13"></script>
-  <script src="js/app.js?v=13"></script>
+  <script src="data/empresa.js?v=15"></script>
+  <script src="shared/tasa.js?v=15"></script>
+  <script src="database/db.js?v=15"></script>
+  <script src="database/cotizaciones.js?v=15"></script>
+  <script src="permanencia/sesion.js?v=15"></script>
+  <script src="permanencia/borrador.js?v=15"></script>
+  <script src="js/plantilla.js?v=15"></script>
+  <script src="js/app.js?v=15"></script>
 </body>
 </html>

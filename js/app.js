@@ -204,6 +204,7 @@ function montarDocumento() {
   // el que ya tuviera el contenedor.
   const h = cont.dataset.hoja || HOJA_DEFECTO;
   aplicarHoja(h, cont.dataset.orientacion || 'portrait');
+  aplicarEscalaImpresion(cont.dataset.escala || 'compacto');
 }
 
 // =============================================
@@ -365,7 +366,7 @@ function restablecerEmpresaOpciones() {
 //  documento: se atenúa en pantalla y desaparece
 //  al imprimir / exportar. El dato nunca se borra.
 // =============================================
-const OPC_VIS = ['tasa', 'numero', 'ref', 'ncf', 'excento', 'gravado', 'itbis', 'dop', 'usd', 'iban', 'swift', 'firmas'];
+const OPC_VIS = ['tasa', 'numero', 'ref', 'ncf', 'excento', 'gravado', 'itbis', 'dop', 'usd', 'iban', 'swift', 'firmas', 'notas'];
 
 // Lee el estado de visibilidad actual desde las clases del documento
 function leerOpcionesVis() {
@@ -654,6 +655,7 @@ function capturarEstado() {
     ocultar:     leerOpcionesVis(),
     idCliente:   leerEtiquetaIdCliente(),
     ...leerHoja(),
+    escala:      leerEscalaImpresion(),
     // Perfil de empresa con el que se creó (define la plantilla)
     perfil:      Perfiles.activoId(),
     // Campos que sólo usa la plantilla LAPS; en la clásica quedan vacíos
@@ -708,6 +710,7 @@ function restaurarEstado(datos) {
   aplicarOpcionesVis(datos.ocultar || { tasa: !!datos.ocultarTasa });
   aplicarEtiquetaIdCliente(datos.idCliente || 'RNC');
   aplicarHoja(datos.hoja || HOJA_DEFECTO, datos.orientacion || 'portrait');
+  aplicarEscalaImpresion(datos.escala || 'compacto');
 
   calcularTotales();
 }
@@ -750,6 +753,7 @@ function iniciarEstadoVacio(numero = null) {
   aplicarOpcionesVis({});
   aplicarEtiquetaIdCliente('RNC');
   aplicarHoja(HOJA_DEFECTO, 'portrait');
+  aplicarEscalaImpresion('compacto');
 
   calcularTotales();
   TabManager.actualizarNumero(num);
@@ -1260,6 +1264,24 @@ function aplicarHoja(hoja, orientacion) {
   }
 }
 
+// Ajuste de impresión: 'compacto' (tipografías reducidas, más texto
+// por hoja) o 'fiel' (la hoja se imprime tal como se ve en pantalla).
+function aplicarEscalaImpresion(modo) {
+  const fiel = modo === 'fiel';
+  document.body.classList.toggle('impr-fiel', fiel);
+  const doc = document.getElementById('documento');
+  if (doc) doc.dataset.escala = fiel ? 'fiel' : 'compacto';
+}
+
+function leerEscalaImpresion() {
+  return document.getElementById('documento')?.dataset.escala || 'compacto';
+}
+
+function cambiarEscalaImpresion() {
+  aplicarEscalaImpresion(document.getElementById('opc-sel-escala')?.value);
+  TabManager.marcarSinGuardar();
+}
+
 function leerHoja() {
   const doc = document.getElementById('documento');
   return {
@@ -1386,6 +1408,9 @@ function renderSelectorHoja() {
   const selH = document.getElementById('opc-sel-hoja');
   const selO = document.getElementById('opc-sel-orientacion');
   if (!selH || !selO) return;
+
+  const selE = document.getElementById('opc-sel-escala');
+  if (selE) selE.value = leerEscalaImpresion();
 
   const actual = leerHoja();
   selH.innerHTML = Object.entries(HOJAS)
@@ -1695,6 +1720,7 @@ async function exportarHTML() {
   const marca     = E.empresa?.nombre || 'Cotizacion';
   const hoja      = leerHoja();
   const anchoHoja = _anchoHojaPx(hoja.hoja, hoja.orientacion);
+  const escala    = leerEscalaImpresion();
 
   // Mismo markup que el editor — ver js/plantilla.js
   const documentoHTML = Plantilla.interior({
@@ -1772,7 +1798,8 @@ body{padding-top:52px!important;background:#DEE6EF;}
 .sin-excento .tot-fila-excento,.sin-gravado .tot-fila-gravado,.sin-itbis .tot-fila-itbis,
 .sin-dop .tot-fila-dop,.sin-usd .tot-fila-usd,
 .sin-iban .pc-iban,.sin-swift .pc-swift,
-.sin-firmas .laps-firmas,.sin-firmas .laps-firma-espacio{opacity:.3;}
+.sin-firmas .laps-firmas,.sin-firmas .laps-firma-espacio,
+.sin-notas .pago-notas{opacity:.3;}
 @media print{
   .exp-bar{display:none!important;}
   body{padding-top:0!important;background:#fff!important;}
@@ -1782,19 +1809,21 @@ body{padding-top:52px!important;background:#DEE6EF;}
   .sin-excento .tot-fila-excento,.sin-gravado .tot-fila-gravado,
   .sin-itbis .tot-fila-itbis,
   .sin-dop .tot-fila-dop,.sin-usd .tot-fila-usd,
-  .sin-firmas .laps-firmas,.sin-firmas .laps-firma-espacio{display:none!important;}
+  .sin-firmas .laps-firmas,.sin-firmas .laps-firma-espacio,
+  .sin-notas .pago-notas{display:none!important;}
   .sin-iban .pc-iban,.sin-swift .pc-swift{display:none!important;}
   .sin-iban .pago-cuentas{grid-template-columns:1fr auto!important;}
   .sin-swift .pago-cuentas{grid-template-columns:1fr 1fr!important;}
   .sin-iban.sin-swift .pago-cuentas{grid-template-columns:1fr!important;}
   .sin-swift .pc-iban{border-right:none!important;}
   .sin-iban.sin-swift .pc-cuenta{border-right:none!important;}
-  .pagina{width:100%!important;padding:calc(12mm + 20px) calc(10mm + 24px)!important;}
+  body:not(.impr-fiel) .pagina{width:100%!important;padding:calc(12mm + 20px) calc(10mm + 24px)!important;}
+  body.impr-fiel .pagina{zoom:0.9229;}
 }
 ${_reglaPagina(hoja.hoja, hoja.orientacion)}
   </style>
 </head>
-<body>
+<body class="${escala === 'fiel' ? 'impr-fiel' : ''}">
 <div class="exp-bar">
   <span class="exp-titulo">${escHTML(marca)} &mdash; ${escHTML(numRaw)}</span>
   <div class="exp-btns">

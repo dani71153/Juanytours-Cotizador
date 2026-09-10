@@ -1,3 +1,4 @@
+@charset "UTF-8";
 /* =============================================
    JUANYTOURS — SISTEMA DE COTIZACIÓN
    ============================================= */
@@ -860,20 +861,30 @@ body {
   body {
     background: #fff !important;
     padding-top: 0 !important;
-    font-size: 12px;
   }
+
+  /* Ajuste COMPACTO (por defecto): reduce tipografías y rehace los
+     márgenes para aprovechar el papel. No reproduce la pantalla. */
+  body:not(.impr-fiel) { font-size: 12px; }
 
   .no-print { display: none !important; }
 
-  .pagina {
+  .pagina { margin: 0 !important; box-shadow: none !important; }
+
+  body:not(.impr-fiel) .pagina {
     width: 100% !important;
-    margin: 0 !important;
     /* 12mm/10mm eran el margen de @page; ahora van aquí para que el
        navegador no tenga sitio donde dibujar su encabezado y su pie. */
     padding: calc(12mm + 20px) calc(10mm + 24px) !important;
-    box-shadow: none !important;
     border-top: 4px solid var(--azul) !important;
   }
+
+  /* Ajuste FIEL A LA PANTALLA: conserva la maqueta tal cual y encoge
+     la hoja entera hasta el ancho del papel. El factor es constante
+     porque el ancho en pantalla ya es proporcional al del papel:
+     210mm (793.7px) / 860px = 0.9229. Vale para A4, Carta y Legal,
+     en vertical y en horizontal. */
+  body.impr-fiel .pagina { zoom: var(--zoom-impresion, 0.9229); }
 
   .btn-eliminar,
   .btn-mover,
@@ -884,10 +895,10 @@ body {
   .th-del,
   .td-del { display: none !important; }
 
-  .tabla-servicios th,
-  .tabla-servicios td { font-size: 11px; }
+  body:not(.impr-fiel) .tabla-servicios th,
+  body:not(.impr-fiel) .tabla-servicios td { font-size: 11px; }
 
-  .doc-titulo-texto { font-size: 22px; }
+  body:not(.impr-fiel) .doc-titulo-texto { font-size: 22px; }
 
   /* Notas en impresión: borde sólido suave, sin fondo amarillo */
   .tr-nota .td-nota {
@@ -914,7 +925,8 @@ body {
   .sin-dop     .tot-fila-dop,
   .sin-usd     .tot-fila-usd,
   .sin-firmas  .laps-firmas,
-  .sin-firmas  .laps-firma-espacio { display: none !important; }
+  .sin-firmas  .laps-firma-espacio,
+  .sin-notas   .pago-notas { display: none !important; }
 
   /* IBAN / SWIFT ocultos: se retiran del grid y las columnas se reacomodan */
   .sin-iban  .pc-iban,
@@ -956,7 +968,8 @@ body {
   .sin-iban    .pc-iban,
   .sin-swift   .pc-swift,
   .sin-firmas  .laps-firmas,
-  .sin-firmas  .laps-firma-espacio {
+  .sin-firmas  .laps-firma-espacio,
+  .sin-notas   .pago-notas {
     opacity: .3;
     transition: opacity .15s;
   }
@@ -972,7 +985,8 @@ body {
   .sin-iban    .pc-iban:hover,
   .sin-swift   .pc-swift:hover,
   .sin-firmas  .laps-firmas:hover,
-  .sin-firmas  .laps-firma-espacio:hover { opacity: .75; }
+  .sin-firmas  .laps-firma-espacio:hover,
+  .sin-notas   .pago-notas:hover { opacity: .75; }
 }
 
 /* =============================================
@@ -1209,6 +1223,13 @@ body.vista-impresion #documento .btn-mover { display: none !important; }
 
 body.vista-impresion .fila-oculta td { visibility: hidden !important; }
 
+/* Mismas reducciones tipográficas que aplica la impresión compacta,
+   para que la vista previa no mienta sobre el tamaño del texto. */
+body.vista-impresion:not(.impr-fiel) .pagina { font-size: 12px; }
+body.vista-impresion:not(.impr-fiel) .tabla-servicios th,
+body.vista-impresion:not(.impr-fiel) .tabla-servicios td { font-size: 11px; }
+body.vista-impresion:not(.impr-fiel) .doc-titulo-texto { font-size: 22px; }
+
 body.vista-impresion .sin-tasa    .tot-izq,
 body.vista-impresion .sin-numero  .doc-numero-wrap,
 body.vista-impresion .sin-ref     .fr-fila-ref,
@@ -1221,7 +1242,8 @@ body.vista-impresion .sin-usd     .tot-fila-usd,
 body.vista-impresion .sin-iban    .pc-iban,
 body.vista-impresion .sin-swift   .pc-swift,
 body.vista-impresion .sin-firmas  .laps-firmas,
-body.vista-impresion .sin-firmas  .laps-firma-espacio { display: none !important; opacity: 1 !important; }
+body.vista-impresion .sin-firmas  .laps-firma-espacio,
+body.vista-impresion .sin-notas   .pago-notas { display: none !important; opacity: 1 !important; }
 
 body.vista-impresion .sin-iban           .pago-cuentas { grid-template-columns: 1fr auto; }
 body.vista-impresion .sin-swift          .pago-cuentas { grid-template-columns: 1fr 1fr; }
@@ -1229,10 +1251,28 @@ body.vista-impresion .sin-iban.sin-swift .pago-cuentas { grid-template-columns: 
 body.vista-impresion .sin-swift          .pc-iban   { border-right: none; }
 body.vista-impresion .sin-iban.sin-swift .pc-cuenta { border-right: none; }
 
-/* Aviso de que se está viendo el resultado final */
-body.vista-impresion #documento {
-  outline: 2px dashed #B9CDE3;
-  outline-offset: 10px;
+/* Aviso de que se está viendo el resultado final.
+   Es una etiqueta flotante y no un borde sobre la hoja: el recuadro
+   punteado anterior se confundía con contenido del documento. */
+body.vista-impresion::after {
+  content: "👁 Vista final · así saldrá impreso";
+  position: fixed;
+  bottom: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1500;
+  background: var(--azul-dark, #002B57);
+  color: #fff;
+  font-family: var(--fuente);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 8px 16px;
+  border-radius: 20px;
+  box-shadow: 0 3px 14px rgba(0,0,0,.28);
+  pointer-events: none;
+}
+@media print {
+  body.vista-impresion::after { display: none !important; }
 }
 
 .btn-vista.activa {

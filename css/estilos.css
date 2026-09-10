@@ -911,6 +911,27 @@ body {
 
   .fila-oculta td { visibility: hidden !important; }
 
+  /* ── Marcas del editor que no deben salir impresas ──
+     1. El icono de calendario del <input type="date">.
+     2. Los subrayados discontinuos de los campos editables.
+     3. Los textos de ayuda (data-placeholder) de los campos vacíos:
+        sin esto, un NCF sin llenar imprime "0" y las notas vacías
+        imprimen "Notas adicionales...". */
+  .pagina .inp-fecha {
+    -webkit-appearance: none;
+    appearance: none;
+    cursor: default;
+  }
+  .pagina .inp-fecha::-webkit-calendar-picker-indicator { display: none !important; }
+
+  .pagina .doc-numero,
+  .pagina .cli-val,
+  .pagina .fr-val,
+  .pagina .tasa-val,
+  .pagina .inp-fecha { border-bottom: none !important; }
+
+  .pagina [contenteditable]:empty::before { content: none !important; }
+
   /* ── Elementos ocultados desde "Opciones de impresión" ── */
   /* display:none y no visibility:hidden: así el hueco se cierra
      en vez de quedar un espacio en blanco del tamaño del elemento. */
@@ -1222,6 +1243,27 @@ body.vista-impresion #documento .btn-eliminar,
 body.vista-impresion #documento .btn-mover { display: none !important; }
 
 body.vista-impresion .fila-oculta td { visibility: hidden !important; }
+
+/* ── Marcas del editor que no deben salir impresas ──
+     1. El icono de calendario del <input type="date">.
+     2. Los subrayados discontinuos de los campos editables.
+     3. Los textos de ayuda (data-placeholder) de los campos vacíos:
+        sin esto, un NCF sin llenar imprime "0" y las notas vacías
+        imprimen "Notas adicionales...". */
+body.vista-impresion .pagina .inp-fecha {
+    -webkit-appearance: none;
+    appearance: none;
+    cursor: default;
+  }
+body.vista-impresion .pagina .inp-fecha::-webkit-calendar-picker-indicator { display: none !important; }
+
+body.vista-impresion .pagina .doc-numero,
+body.vista-impresion .pagina .cli-val,
+body.vista-impresion .pagina .fr-val,
+body.vista-impresion .pagina .tasa-val,
+body.vista-impresion .pagina .inp-fecha { border-bottom: none !important; }
+
+body.vista-impresion .pagina [contenteditable]:empty::before { content: none !important; }
 
 /* Mismas reducciones tipográficas que aplica la impresión compacta,
    para que la vista previa no mienta sobre el tamaño del texto. */

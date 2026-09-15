@@ -884,6 +884,14 @@ body.vista-impresion .cli-label-ncf #lbl-ncf { display: inline; }
 
   .pagina { margin: 0 !important; box-shadow: none !important; }
 
+  /* Mantener los datos bancarios y el método de pago en la misma hoja.
+     Al fragmentar el grid, el navegador puede estirar la última cuenta. */
+  .seccion-pago,
+  .pago-cuentas {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
   body:not(.impr-fiel) .pagina {
     width: 100% !important;
     /* 12mm/10mm eran el margen de @page; ahora van aquí para que el

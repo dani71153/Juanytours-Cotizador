@@ -261,6 +261,19 @@ body {
   margin-right: 5px;
 }
 
+.cli-label-ncf { display: inline-block; }
+.cli-label-ncf .sel-ncf {
+  display: inline-block;
+  margin: 0;
+  vertical-align: baseline;
+  cursor: pointer;
+}
+.cli-label-ncf #lbl-ncf { display: none; }
+body.vista-impresion .cli-label-ncf #lbl-ncf { display: inline; }
+@media print {
+  .cli-label-ncf #lbl-ncf { display: inline; }
+}
+
 .cli-val {
   min-width: 120px;
   display: inline-block;

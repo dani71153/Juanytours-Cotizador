@@ -647,6 +647,7 @@ function capturarEstado() {
     telCli:      getCE('doc-cli-tel'),
     rncCli:      getCE('doc-cli-rnc'),
     ncf:         getCE('doc-ncf'),
+    tipoNcf:     document.getElementById('sel-ncf')?.value || 'NCF',
     items:       JSON.parse(JSON.stringify(cot.items)),
     tasaOficial: typeof TasaCambio !== 'undefined' ? TasaCambio.getOficial() : 60.65,
     tasaFija:    typeof TasaCambio !== 'undefined' ? TasaCambio.getFija()    : null,
@@ -677,6 +678,7 @@ function restaurarEstado(datos) {
   setCE('doc-cli-tel',datos.telCli || '');
   setCE('doc-cli-rnc',datos.rncCli || '');
   setCE('doc-ncf',    datos.ncf    || '');
+  cambiarEtiquetaNcf(datos.tipoNcf, false);
   setCE('doc-metodo', datos.metodo || '');
   setCE('doc-notas',  datos.notas  || '');
 
@@ -727,6 +729,7 @@ function iniciarEstadoVacio(numero = null) {
   setCE('doc-cli-tel','');
   setCE('doc-cli-rnc','');
   setCE('doc-ncf',    '');
+  cambiarEtiquetaNcf('NCF', false);
   setCE('doc-metodo', '');
   setCE('doc-notas',  '');
   setCE('doc-cli-dir',     '');
@@ -1195,6 +1198,14 @@ function calcularTotales() {
 function cambiarTipoDoc(valor) {
   setText('doc-titulo-texto',  valor);
   setText('cli-tipo-doc-texto',valor);
+}
+
+function cambiarEtiquetaNcf(valor, marcar = true) {
+  const etiqueta = valor === 'Avance' ? 'Avance' : 'NCF';
+  const sel = document.getElementById('sel-ncf');
+  if (sel) sel.value = etiqueta;
+  setText('lbl-ncf', etiqueta + ':');
+  if (marcar) TabManager.marcarSinGuardar();
 }
 
 // =============================================
@@ -1761,6 +1772,7 @@ async function exportarHTML() {
     sH('tot-usd','<strong>'+fN(usd)+'</strong>');
   };
   window.cambiarTipoDoc=function(v){sT('doc-titulo-texto',v);sT('cli-tipo-doc-texto',v);};
+  window.cambiarEtiquetaNcf=function(v){sT('lbl-ncf',(v==='Avance'?'Avance':'NCF')+':');};
   window.imprimir=function(){
     var num=document.getElementById('doc-numero')?.textContent||'cotizacion';
     var t=document.title;document.title=MARCA+'-'+num.trim();window.print();document.title=t;

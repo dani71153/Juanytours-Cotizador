@@ -26,6 +26,17 @@
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
 
+  function etiquetaNcf(e) {
+    const etiqueta = e.tipoNcf === 'Avance' ? 'Avance' : 'NCF';
+    return `<span class="cli-label cli-label-ncf" title="Cambiar entre NCF y Avance">
+      <span id="lbl-ncf">${etiqueta}:</span>
+      <select id="sel-ncf" class="sel-tipo sel-ncf no-print" aria-label="NCF o Avance" onchange="cambiarEtiquetaNcf(this.value)">
+        <option value="NCF"${etiqueta === 'NCF' ? ' selected' : ''}>NCF</option>
+        <option value="Avance"${etiqueta === 'Avance' ? ' selected' : ''}>Avance</option>
+      </select>
+    </span>`;
+  }
+
   function num(n) {
     return Number(n).toLocaleString('es-DO',
       { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -187,7 +198,7 @@ ${cLinea}        <td class="td-tipo no-print">
       <div class="cli-der">
         <p class="cli-tipo-doc" id="cli-tipo-doc-texto">${esc(tipoDoc)}</p>
         <p class="cli-fila-ncf">
-          <span class="cli-label">NCF:</span>
+          ${etiquetaNcf(e)}
           <span class="cli-val" contenteditable="true" id="doc-ncf" data-placeholder="0">${esc(e.ncf || '')}</span>
         </p>
       </div>
@@ -328,7 +339,7 @@ ${editor ? '          <span id="tasa-indicador" class="tasa-indicador tasa-ind-o
           <p>Tel&eacute;fono: <span class="cli-val" contenteditable="true" id="doc-cli-tel" data-placeholder="Tel&eacute;fono">${esc(e.telCli || '')}</span></p>
           <p><span class="cli-label" id="lbl-cli-rnc">${esc(etqIdCli)}:</span>
              <span class="cli-val" contenteditable="true" id="doc-cli-rnc" data-placeholder="${esc(etqIdCli)}">${esc(e.rncCli || '')}</span></p>
-          <p class="cli-fila-ncf"><span class="cli-label">NCF:</span>
+          <p class="cli-fila-ncf">${etiquetaNcf(e)}
              <span class="cli-val" contenteditable="true" id="doc-ncf" data-placeholder="0">${esc(e.ncf || '')}</span></p>
           <p class="fr-fila-ref">Referencia:
              <span class="cli-val" contenteditable="true" id="doc-ref" data-placeholder="0">${esc(e.ref || '')}</span></p>

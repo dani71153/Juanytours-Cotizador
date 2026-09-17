@@ -233,7 +233,6 @@ function poblarEmpresa(e) {
 
   setText('doc-pague-a',      ba.pagueA   || em.nombre);
   setText('doc-rnc-pago',     em.rnc      || '');
-  setText('doc-banco-nombre', ba.nombre   || '');
 
   // Guardar defaults para nuevas cotizaciones
   window._DEFAULTS = {
@@ -244,12 +243,25 @@ function poblarEmpresa(e) {
     itbis:       fi.itbisPorcentaje || 18
   };
 
-  renderBanco(ba);
+  renderBanco(ba, em);
 }
 
-function renderBanco(ba) {
+function renderBanco(ba, em) {
+  em = em || window.EMPRESA?.empresa || {};
+
   const c = document.getElementById('bloque-cuentas');
   if (c) c.innerHTML = Plantilla.cuentas(ba);
+
+  // #doc-banco-nombre es un solo dato en la plantilla clásica, pero en
+  // LAPS es el contenedor de TODAS las líneas bancarias (banco, cuenta,
+  // páguese a, RNC). Escribir ahí sólo el nombre borraba las demás.
+  const n = document.getElementById('doc-banco-nombre');
+  if (!n) return;
+  if (n.classList.contains('laps-banco-lineas')) {
+    n.innerHTML = Plantilla.lineasBanco(ba, em, em.rncLabel || 'RNC');
+  } else {
+    n.textContent = ba.nombre || '';
+  }
 }
 
 // =============================================
@@ -341,19 +353,30 @@ const EmpresaCfg = {
 };
 
 function guardarEmpresaOpciones() {
+  // Defectos que había ANTES de guardar: si el documento sigue
+  // mostrando uno de ellos es porque lo heredó, así que toca
+  // actualizarlo. Sólo se respeta lo que se escribió a mano.
+  const antes = { ...(window.EMPRESA?.defectos || {}) };
+
   EmpresaCfg.guardarDesdeInputs();
 
-  // Si el documento abierto aún no tiene vendedor, hereda el nuevo
-  // valor por defecto; si ya tiene uno escrito, no se toca.
   const def = window.EMPRESA?.defectos || {};
-  if (!getCE('doc-vendedor')     && def.vendedor)    setCE('doc-vendedor',     def.vendedor);
-  if (!getCE('doc-valido-hasta') && def.validoHasta) setCE('doc-valido-hasta', def.validoHasta);
+  _heredarDefecto('doc-vendedor',     antes.vendedor,    def.vendedor);
+  _heredarDefecto('doc-valido-hasta', antes.validoHasta, def.validoHasta);
 
   const inp = document.getElementById('opc-prox-numero');
   if (inp && inp.value !== '') fijarProximoNumero(inp.value);
 
   renderProximoNumero();
   mostrarToast('✓ Datos de empresa aplicados');
+}
+
+// Pone el nuevo defecto en un campo del documento salvo que el
+// usuario haya escrito ahí algo distinto del defecto anterior.
+function _heredarDefecto(id, defViejo, defNuevo) {
+  if (!defNuevo) return;
+  const actual = getCE(id);
+  if (!actual || actual === String(defViejo || '').trim()) setCE(id, defNuevo);
 }
 
 function restablecerEmpresaOpciones() {
@@ -1473,11 +1496,90 @@ const HOJAS = {
 const HOJA_DEFECTO = 'A4';
 const ANCHO_BASE_PX = 860;   // ancho en pantalla de una A4 vertical
 
+// =============================================
+//  DOCUMENTOS DE MÁS DE UNA HOJA
+//
+//  En una sola hoja conviene @page { margin: 0 }: sin margen el
+//  navegador no tiene dónde imprimir su encabezado y su pie (título,
+//  fecha, URL, nº de página), y el margen visual lo pone el padding
+//  de .pagina.
+//
+//  Pero el padding de un bloque sólo se dibuja al principio y al
+//  final del bloque, no en cada hoja: en cuanto el documento pasa de
+//  una página, la segunda salía con el contenido pegado al borde del
+//  papel. Por eso, cuando no cabe en una hoja se cambia a márgenes
+//  de @page, que sí se repiten en todas:
+//
+//    · vertical   → @page (14 mm arriba y abajo de cada hoja)
+//    · horizontal → padding de .pagina (así la franja azul del
+//                   encabezado sigue llegando a los dos bordes)
+//    · 3 mm extra arriba en la primera, para separar el contenido
+//      de esa franja azul
+// =============================================
+const MARGEN_V_MM = 14;   // margen vertical de cada hoja
+const MARGEN_H_MM = 16;   // margen lateral (padding de .pagina)
+const PAD_SUP_MM  = 3;    // aire bajo la franja azul de la 1ª hoja
+
+let _multiHoja = false;   // último cálculo de "no cabe en una hoja"
+
+function _mmAPx(mm) {
+  return ANCHO_BASE_PX * mm / HOJAS.A4.ancho;
+}
+
 // Regla @page para el tamaño y la orientación pedidos
-function _reglaPagina(hoja, orientacion) {
+function _reglaPagina(hoja, orientacion, multi) {
   const h = HOJAS[hoja] || HOJAS[HOJA_DEFECTO];
   const o = orientacion === 'landscape' ? 'landscape' : 'portrait';
-  return `@page { size: ${h.css} ${o}; margin: 0; }`;
+  if (!multi) return `@page { size: ${h.css} ${o}; margin: 0; }`;
+
+  return `@page { size: ${h.css} ${o}; margin: ${MARGEN_V_MM}mm 0; }
+@media print {
+  body.doc-multi-hoja:not(.impr-fiel) .pagina {
+    padding: ${PAD_SUP_MM}mm ${MARGEN_H_MM}mm 0 !important;
+  }
+}`;
+}
+
+// Alto de la hoja en px de pantalla (el ancho en pantalla ya es
+// proporcional al del papel, así que sirve la misma proporción)
+function _altoHojaPx(hoja, orientacion) {
+  const h  = HOJAS[hoja] || HOJAS[HOJA_DEFECTO];
+  const mm = orientacion === 'landscape' ? h.ancho : h.alto;
+  return Math.round(ANCHO_BASE_PX * mm / HOJAS.A4.ancho);
+}
+
+// ¿El contenido pasa de una hoja? Se mide con la tipografía de
+// impresión — la que aplica .vista-impresion — porque el ajuste
+// compacto reduce las fuentes y cabe bastante más.
+function _documentoNoCabe(pag) {
+  // En el editor #documento es la propia .pagina; en el HTML
+  // exportado la .pagina es otro elemento.
+  pag = pag || document.getElementById('documento') || document.querySelector('.pagina');
+  if (!pag) return false;
+
+  const { hoja, orientacion } = leerHoja();
+  const body      = document.body;
+  const yaEnVista = body.classList.contains('vista-impresion');
+  if (!yaEnVista) body.classList.add('vista-impresion');
+
+  const cs        = getComputedStyle(pag);
+  const contenido = pag.scrollHeight
+                  - parseFloat(cs.paddingTop)
+                  - parseFloat(cs.paddingBottom);
+
+  if (!yaEnVista) body.classList.remove('vista-impresion');
+
+  return contenido > _altoHojaPx(hoja, orientacion) - 2 * _mmAPx(MARGEN_V_MM);
+}
+
+// Se llama antes de imprimir (y antes de exportar): decide si el
+// documento necesita los márgenes por hoja y reescribe la regla.
+function prepararImpresion() {
+  _multiHoja = _documentoNoCabe();
+  document.body.classList.toggle('doc-multi-hoja', _multiHoja);
+  const { hoja, orientacion } = leerHoja();
+  aplicarHoja(hoja, orientacion);
+  return _multiHoja;
 }
 
 // Ancho en pantalla proporcional al papel, para que la vista se parezca
@@ -1497,7 +1599,7 @@ function aplicarHoja(hoja, orientacion) {
     est.id = 'estilo-hoja';
     document.head.appendChild(est);   // al final del head: gana sobre estilos.css
   }
-  est.textContent = _reglaPagina(h, o);
+  est.textContent = _reglaPagina(h, o, _multiHoja);
 
   const doc = document.getElementById('documento');
   if (doc) {
@@ -1767,6 +1869,10 @@ function iniciarListenersGlobales() {
   // Cerrar dropdown exportar al hacer clic fuera
   document.addEventListener('click', () => cerrarExportMenu());
 
+  // Ctrl+P, el botón PDF y el diálogo del sistema pasan por aquí:
+  // es el momento de decidir los márgenes según cuántas hojas ocupa.
+  window.addEventListener('beforeprint', () => prepararImpresion());
+
   // Antes de cerrar: guardar sesión y borrador del estado actual
   window.addEventListener('beforeunload', () => {
     const tab = TabManager.tabs.find(t => t.id === TabManager.activeId);
@@ -1950,6 +2056,9 @@ function mostrarToast(msg, error = false) {
 // =============================================
 async function exportarHTML() {
   const estado   = capturarEstado();
+  // Antes de copiar el CSS: así el archivo se lleva la regla @page
+  // que le corresponde según cuántas hojas ocupa el documento.
+  const multi    = prepararImpresion();
   const numRaw   = estado.numero || 'cotizacion';
   const logoSrc  = await _logoABase64();
   const cssText  = _extractCSS();
@@ -2021,6 +2130,27 @@ async function exportarHTML() {
   document.querySelectorAll('.sel-tipo-item').forEach(function(sel){
     sel.addEventListener('change',function(){this.closest('tr').dataset.tipo=this.value;window.calcTotales();});
   });
+  // Paginación: el archivo es editable, así que si al agregar texto
+  // pasa de una hoja hay que activar los márgenes por hoja (y al
+  // revés). Misma lógica que prepararImpresion() en js/app.js.
+  var HOJA_ALTO=${_altoHojaPx(hoja.hoja, hoja.orientacion)};
+  var HOJA_MARGEN=${Math.round(_mmAPx(MARGEN_V_MM))};
+  var REGLA_UNA=${JSON.stringify(_reglaPagina(hoja.hoja, hoja.orientacion, false))};
+  var REGLA_VARIAS=${JSON.stringify(_reglaPagina(hoja.hoja, hoja.orientacion, true))};
+  window.addEventListener('beforeprint',function(){
+    var pag=document.querySelector('.pagina');
+    if(!pag) return;
+    var body=document.body, enVista=body.classList.contains('vista-impresion');
+    if(!enVista) body.classList.add('vista-impresion');
+    var cs=getComputedStyle(pag);
+    var alto=pag.scrollHeight-parseFloat(cs.paddingTop)-parseFloat(cs.paddingBottom);
+    if(!enVista) body.classList.remove('vista-impresion');
+    var multi=alto>HOJA_ALTO-2*HOJA_MARGEN;
+    body.classList.toggle('doc-multi-hoja',multi);
+    var est=document.getElementById('estilo-hoja');
+    if(!est){est=document.createElement('style');est.id='estilo-hoja';document.head.appendChild(est);}
+    est.textContent=multi?REGLA_VARIAS:REGLA_UNA;
+  });
   window.calcTotales();
 })();`;
 
@@ -2073,7 +2203,7 @@ body{padding-top:52px!important;background:#DEE6EF;}
 ${_reglaPagina(hoja.hoja, hoja.orientacion)}
   </style>
 </head>
-<body class="${escala === 'fiel' ? 'impr-fiel' : ''}">
+<body class="${[escala === 'fiel' ? 'impr-fiel' : '', multi ? 'doc-multi-hoja' : ''].filter(Boolean).join(' ')}">
 <div class="exp-bar">
   <span class="exp-titulo">${escHTML(marca)} &mdash; ${escHTML(numRaw)}</span>
   <div class="exp-btns">

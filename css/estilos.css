@@ -1086,13 +1086,42 @@ body.vista-impresion .td-monto.formula-error { background: none !important; colo
 
   .pagina { margin: 0 !important; box-shadow: none !important; }
 
-  /* Mantener los datos bancarios y el método de pago en la misma hoja.
-     Al fragmentar el grid, el navegador puede estirar la última cuenta. */
+  /* ── Cortes de página ──────────────────────
+     Cuando el documento pasa de una hoja (ver prepararImpresion()
+     en js/app.js), estas reglas deciden por dónde se parte. */
+
+  /* Bloques que no deben quedar partidos entre dos hojas.
+     Al fragmentar el grid bancario, además, el navegador estira
+     la última cuenta. */
   .seccion-pago,
-  .pago-cuentas {
+  .pago-cuentas,
+  .seccion-totales,
+  .tabla-totales,
+  .laps-banco,
+  .laps-firmas,
+  .laps-firma-espacio,
+  .tabla-servicios tr {
     break-inside: avoid;
     page-break-inside: avoid;
   }
+
+  /* El encabezado nunca se queda solo al final de una hoja */
+  .encabezado,
+  .laps-cab,
+  .laps-bloques,
+  .seccion-cliente,
+  .linea-azul {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+
+  /* Los títulos de columna se repiten en cada hoja: en la segunda
+     hoja la tabla sigue siendo legible sin volver a la primera. */
+  .tabla-servicios thead { display: table-header-group; }
+  .tabla-servicios tfoot { display: table-footer-group; }
+
+  /* Las filas decorativas vacías no justifican una hoja nueva */
+  .tr-vacio { break-before: avoid; page-break-before: avoid; }
 
   body:not(.impr-fiel) .pagina {
     width: 100% !important;

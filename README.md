@@ -159,6 +159,9 @@ Carga datos de empresa, registra listeners, sincroniza el contador de numeració
 #### 7.2 Datos de Empresa (`poblarEmpresa`, `renderBanco`)
 Toma `window.EMPRESA` y llena el DOM del encabezado: logo, nombre, dirección, RNC, teléfono, cuentas bancarias, ITBIS. Guarda defaults en `window._DEFAULTS` para nuevas cotizaciones.
 
+
+`renderBanco(ba, em)` rellena el grid de cuentas de la plantilla clásica y, en LAPS, reconstruye las líneas bancarias con `Plantilla.lineasBanco()`. En LAPS `#doc-banco-nombre` es el contenedor de **todas** las líneas (banco, cuenta, páguese a, RNC), no sólo del nombre: escribir ahí un solo texto borraba las demás.
+
 #### 7.3 TabManager
 Objeto que gestiona las pestañas abiertas. Cada pestaña es `{ id, tipo, numero, dbId, sinGuardar }`.
 
@@ -289,9 +292,51 @@ Sincroniza el selector de tipo (COTIZACIÓN / FACTURA DE CRÉDITO FISCAL / FACTU
 
 Cambia el `document.title` al número de la cotización para que el nombre del archivo PDF sea correcto, luego llama `window.print()`. Los elementos con clase `.no-print` (barra de control, columnas de acciones, modal) se ocultan via CSS.
 
+#### 7.11.1 Documentos de Más de Una Hoja (`prepararImpresion`)
+
+En una sola hoja conviene `@page { margin: 0 }`: sin margen el navegador no tiene dónde
+imprimir su encabezado y su pie (título, fecha, URL, nº de página), y el margen visual lo
+pone el `padding` de `.pagina`.
+
+El problema es que el `padding` de un bloque sólo se dibuja al principio y al final del
+bloque, **no en cada hoja**: en cuanto el documento pasaba de una página, la segunda salía
+con el contenido pegado al borde del papel.
+
+`prepararImpresion()` se llama en el evento `beforeprint` (lo dispara Ctrl+P, el botón PDF
+y el diálogo del sistema) y también al exportar HTML. Mide el documento con la tipografía
+de impresión — activando momentáneamente `.vista-impresion`, que la reproduce — y si no
+cabe en la hoja elegida:
+
+- pone la clase `doc-multi-hoja` en el `<body>`
+- reescribe la regla de `#estilo-hoja` a `@page { margin: 14mm 0 }` — el margen vertical se
+  repite en **todas** las hojas
+- el margen lateral (16 mm) lo sigue poniendo el `padding` de `.pagina`, porque el padding
+  horizontal sí se aplica en cada hoja; así la franja azul del encabezado sigue llegando a
+  los dos bordes
+- deja 3 mm de aire bajo esa franja azul en la primera hoja
+
+Si el documento vuelve a caber en una hoja, la regla vuelve a `margin: 0`. Un documento de
+una página imprime exactamente igual que antes de este cambio.
+
+El archivo HTML exportado lleva las dos reglas y repite el cálculo en su propio
+`beforeprint`: como sus campos son editables, puede pasar de una hoja después de exportarlo.
+
+Los cortes los gobiernan reglas `break-inside` / `break-after` en `@media print`
+(`css/estilos.css`): no se parte una fila de servicio ni el bloque de totales, datos
+bancarios o firmas, el encabezado no se queda solo al final de una hoja, y los títulos de
+columna de la tabla se repiten en cada página (`thead { display: table-header-group }`).
+
+| Función | Qué hace |
+|---|---|
+| `prepararImpresion()` | Decide si hace falta paginar, marca el `body` y reescribe la regla `@page`; devuelve `true` si son varias hojas |
+| `_documentoNoCabe(pag)` | Mide el contenido con la tipografía de impresión y lo compara con el alto útil de la hoja |
+| `_altoHojaPx(hoja, orientacion)` | Alto de la hoja en px de pantalla |
+| `_mmAPx(mm)` | Convierte mm a px de pantalla (misma proporción que el ancho) |
+| `_reglaPagina(hoja, orientacion, multi)` | Genera la regla `@page` (y el padding de `.pagina` cuando hay varias hojas) |
+
 #### 7.12 Listeners Globales (`iniciarListeners`)
 
-Registra eventos sobre: cambio de tipo de documento, edición directa de la tasa en el documento, cambio de fecha, edición del número, clic en el badge de tasa, `beforeunload` (guarda sesión y borrador de emergencia), y todos los `contenteditable` del documento para marcar sin guardar.
+Registra eventos sobre: cambio de tipo de documento, edición directa de la tasa en el documento, cambio de fecha, edición del número, clic en el badge de tasa, `beforeunload` (guarda sesión y borrador de emergencia), y todos los `contenteditable` del documento para marcar sin guardar. Sobre `window` engancha además `beforeprint` → `prepararImpresion()` (ver 7.11.1).
 
 #### 7.13 Helpers Internos
 

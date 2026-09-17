@@ -55,6 +55,23 @@
     <div class="pc-celda pc-iban" style="border-bottom:none"><span class="pc-label">IBAN:</span> ${esc(ba.ibanDOP || '')}</div>`;
   }
 
+  // ── Datos bancarios de la plantilla LAPS ──
+  //  Van como líneas sueltas (no como el grid de la clásica).
+  //  Lo usan interiorLaps() al montar y renderBanco() al refrescar
+  //  los datos de empresa: sin esto, el refresco borraba las cuentas
+  //  y dejaba sólo el nombre del banco.
+  function lineasBanco(ba, emp, etqRnc) {
+    ba  = ba  || {};
+    emp = emp || {};
+    return [
+      ba.nombre || '',
+      ba.cuentaDOP ? `${ba.cuentaDOPLabel || 'Cuenta'} / ${ba.cuentaDOP}` : '',
+      ba.cuentaUSD ? `${ba.cuentaUSDLabel || 'Cuenta USD'} / ${ba.cuentaUSD}` : '',
+      ba.pagueA || emp.nombre || '',
+      emp.rnc ? `${etqRnc || emp.rncLabel || 'RNC'} ${emp.rnc}` : ''
+    ].filter(Boolean).map(l => `        <p>${esc(l)}</p>`).join('\n');
+  }
+
   // ── Filas de la tabla para el HTML exportado ──
   // En el editor las filas las arma renderFilas(), que además
   // engancha listeners por celda; aquí sólo hace falta el markup.
@@ -307,13 +324,7 @@ ${editor ? '          <span id="tasa-indicador" class="tasa-indicador tasa-ind-o
     const cuerpoTabla = editor ? '\n' : '\n' + (ctx.filasHTML || '');
 
     // Los datos bancarios van como líneas sueltas, no como grid
-    const lineasBanco = [
-      ban.nombre || '',
-      ban.cuentaDOP ? `${ban.cuentaDOPLabel || 'Cuenta'} / ${ban.cuentaDOP}` : '',
-      ban.cuentaUSD ? `${ban.cuentaUSDLabel || 'Cuenta USD'} / ${ban.cuentaUSD}` : '',
-      ban.pagueA || emp.nombre || '',
-      emp.rnc ? `${etqRncEmp} ${emp.rnc}` : ''
-    ].filter(Boolean).map(l => `        <p>${esc(l)}</p>`).join('\n');
+    const bancoHTML = lineasBanco(ban, emp, etqRncEmp);
 
     return `
     <!-- CABECERA: logo y datos centrados -->
@@ -389,7 +400,7 @@ ${editor ? '          <th class="th-del  no-print"></th>\n' : ''}        </tr>
       <div class="tot-izq laps-banco">
         <p class="laps-banco-tit">Datos Bancarios:</p>
         <div id="doc-banco-nombre" class="laps-banco-lineas">
-${lineasBanco}
+${bancoHTML}
         </div>
         <div id="bloque-cuentas" class="laps-oculto"></div>
         <span id="doc-pague-a" class="laps-oculto">${esc(ban.pagueA || '')}</span>
@@ -439,7 +450,7 @@ ${lineasBanco}
 `;
   }
 
-  const Plantilla = { TIPOS_DOC, interior, interiorClasica, interiorLaps, cuentas, filasExport, esc, num };
+  const Plantilla = { TIPOS_DOC, interior, interiorClasica, interiorLaps, cuentas, lineasBanco, filasExport, esc, num };
 
   root.Plantilla = Plantilla;
   if (typeof module !== 'undefined' && module.exports) module.exports = Plantilla;

@@ -4,9 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Cotizador — Juanytours</title>
-  <link rel="stylesheet" href="css/estilos.css?v=20" />
-  <link rel="stylesheet" href="css/biblioteca.css?v=20" />
-  <link rel="stylesheet" href="css/plantilla-laps.css?v=20" />
+  <link rel="stylesheet" href="css/estilos.css?v=21" />
+  <link rel="stylesheet" href="css/biblioteca.css?v=21" />
+  <link rel="stylesheet" href="css/plantilla-laps.css?v=21" />
 </head>
 <body>
 
@@ -237,6 +237,35 @@
       <div class="modal-body">
         <div class="aj-seccion">
           <p class="modal-desc" id="fx-resumen"></p>
+
+          <!-- Edición en lote: las filas se agrupan por el ajuste
+               que llevan al final (+15%, *1.18…) -->
+          <div class="fx-lote" id="fx-lote">
+            <div class="fx-lote-tit">Cambiar en lote</div>
+            <div class="aj-fila-campo">
+              <label class="aj-etq" for="fx-sel-grupo">F&oacute;rmulas</label>
+              <select id="fx-sel-grupo" class="aj-sel" onchange="previsualizarLote()"></select>
+            </div>
+            <div class="aj-fila-campo fx-lote-acciones">
+              <label class="aj-etq" for="fx-nuevo-ajuste">Cambiar a</label>
+              <input type="text" id="fx-nuevo-ajuste" class="aj-inp fx-inp" placeholder="+10%"
+                     autocomplete="off" spellcheck="false"
+                     oninput="previsualizarLote()"
+                     onkeydown="if(event.key==='Enter') aplicarLoteFormulas('cambiar')" />
+              <button class="fx-btn fx-btn-ok" id="fx-btn-cambiar"
+                      onclick="aplicarLoteFormulas('cambiar')">Cambiar</button>
+            </div>
+            <div class="fx-lote-otros">
+              <button class="fx-btn" id="fx-btn-quitar" onclick="aplicarLoteFormulas('quitar')"
+                      title="Deja el importe como estaba antes de ese ajuste">Quitar el ajuste</button>
+              <button class="fx-btn" id="fx-btn-numero" onclick="aplicarLoteFormulas('numero')"
+                      title="Se queda el resultado como n&uacute;mero fijo y se pierde la f&oacute;rmula">Convertir en n&uacute;mero</button>
+              <button class="fx-btn fx-btn-deshacer" id="fx-btn-deshacer"
+                      onclick="deshacerAjuste()" style="display:none">&#8630; Deshacer</button>
+            </div>
+            <p class="fx-lote-nota" id="fx-lote-nota"></p>
+          </div>
+
           <div id="fx-lista" class="fx-lista"></div>
         </div>
       </div>
@@ -518,14 +547,14 @@
   <!-- ===== TOAST DE GUARDADO ===== -->
   <div id="toast-guardado" class="toast-guardado no-print" style="display:none">&#x2713; Guardado</div>
 
-  <script src="data/empresa.js?v=20"></script>
-  <script src="shared/tasa.js?v=20"></script>
-  <script src="database/db.js?v=20"></script>
-  <script src="database/cotizaciones.js?v=20"></script>
-  <script src="permanencia/sesion.js?v=20"></script>
-  <script src="permanencia/borrador.js?v=20"></script>
-  <script src="js/formula.js?v=20"></script>
-  <script src="js/plantilla.js?v=20"></script>
-  <script src="js/app.js?v=20"></script>
+  <script src="data/empresa.js?v=21"></script>
+  <script src="shared/tasa.js?v=21"></script>
+  <script src="database/db.js?v=21"></script>
+  <script src="database/cotizaciones.js?v=21"></script>
+  <script src="permanencia/sesion.js?v=21"></script>
+  <script src="permanencia/borrador.js?v=21"></script>
+  <script src="js/formula.js?v=21"></script>
+  <script src="js/plantilla.js?v=21"></script>
+  <script src="js/app.js?v=21"></script>
 </body>
 </html>

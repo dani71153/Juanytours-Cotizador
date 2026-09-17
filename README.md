@@ -310,8 +310,34 @@ ajuste en lote, al corregir una fórmula o al abrir una cotización guardada.
 La vista previa del ajuste en lote (7.8.2) marca además con `ƒ` las filas que **ya** traían
 fórmula, y el tooltip dice en qué se convertirá — `800+1200` → `(800+1200)+15%`.
 
+**Cambiar en lote las fórmulas ya aplicadas.** Si 41 filas acabaron en `+15%`, corregirlas una
+por una no es opción. El listado agrupa las filas por el **ajuste que llevan al final** y ofrece
+tres acciones sobre el grupo elegido:
+
+| Acción | Qué hace | Ejemplo |
+|---|---|---|
+| **Cambiar a `+8%`** | Sustituye el ajuste final y conserva la base | `1025+15%` → `1025+8%` |
+| **Quitar el ajuste** | Vuelve la base; si la base no era fórmula, queda número pelado | `(800+325)+15%` → `800+325` |
+| **Convertir en número** | Se queda el resultado y se pierde la fórmula (el total no cambia) | `1025*1.18` → `1,209.50` |
+
+El selector lista un grupo por ajuste detectado (`+15% — 41 filas`) más `Todas las fórmulas`, que
+sólo habilita *Convertir en número* porque las otras dos operan sobre un ajuste concreto. Debajo,
+una línea de vista previa con el ejemplo de la primera fila. **Deshacer** revierte la operación
+completa (mismo snapshot que el ajuste en lote de 7.8.2).
+
+El reconocimiento del ajuste final está en `_partirAjuste()`: las fórmulas que salen del ajuste en
+lote tienen la forma `BASE+AJUSTE` con la base entre paréntesis si ya era una fórmula, así que se
+parten sin ambigüedad — incluso anidadas (`((1500)+10%)+15%`). Una fórmula escrita a mano que no
+encaje en ese patrón (`(120+30)*2`) no se agrupa: sigue apareciendo en el listado y se puede
+convertir en número, pero no se toca su interior.
+
 | Función | Qué hace |
 |---|---|
+| `_partirAjuste(formula)` | Parte una fórmula en `{ base, ajuste }`, o `null` si no reconoce un ajuste final |
+| `_gruposDeAjuste()` | Agrupa las filas con fórmula por ajuste, de mayor a menor |
+| `_seleccionLote()` | Filas del grupo elegido en el modal |
+| `renderLoteFormulas()` / `previsualizarLote()` | Pintan el selector y la vista previa, y habilitan los botones |
+| `aplicarLoteFormulas(modo)` | `'cambiar'`, `'quitar'` o `'numero'`; guarda el snapshot para deshacer |
 | `_filasConFormula()` | Filas con fórmula, con su nº visible, resultado y si es válida |
 | `actualizarAvisoFormulas()` | Enciende, apaga y redacta el aviso de la barra |
 | `abrirModalFormulas()` / `cerrarModalFormulas()` | Abren y cierran el listado |

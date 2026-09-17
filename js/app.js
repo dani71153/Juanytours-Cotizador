@@ -1451,7 +1451,11 @@ function deshacerAjuste() {
   calcularTotales();
   TabManager.marcarSinGuardar();
   cerrarModalAjuste();
-  mostrarToast(`Ajuste ${ajuste} deshecho en ${n === 1 ? '1 fila' : n + ' filas'}`);
+  // Si se deshizo desde el listado de fórmulas, se refresca en sitio
+  if (document.getElementById('modal-formulas')?.classList.contains('visible')) {
+    renderModalFormulas();
+  }
+  mostrarToast(`Deshecho (${ajuste}) en ${n === 1 ? '1 fila' : n + ' filas'}`);
 }
 
 // Sincroniza cot.items desde el DOM (antes de serializar)
@@ -1550,6 +1554,40 @@ function _filasConFormula() {
   return lista;
 }
 
+// ── Partir una fórmula en "base" + "ajuste final" ──
+//  Las fórmulas que salen del ajuste en lote tienen la forma
+//  BASE+AJUSTE, con la base entre paréntesis si ya era una fórmula:
+//    1500+15%          → base 1500        · ajuste +15%
+//    (800+1200)*1.18   → base 800+1200    · ajuste *1.18
+//    ((1500)+10%)+15%  → base (1500)+10%  · ajuste +15%
+//  Devuelve null si al final no se reconoce un ajuste (fórmula
+//  escrita a mano como "(120+30)*2" con paréntesis al principio).
+function _partirAjuste(formula) {
+  const s = String(formula || '').trim();
+  const OP = '[+\\-*/xX×÷]';
+  let m = s.match(new RegExp('^\\((.+)\\)\\s*(' + OP + '[^()]*)$'));
+  if (m) return { base: m[1].trim(), ajuste: m[2].trim() };
+  m = s.match(new RegExp('^(-?\\d+(?:\\.\\d+)?)\\s*(' + OP + '[^()]*)$'));
+  if (m) return { base: m[1].trim(), ajuste: m[2].trim() };
+  return null;
+}
+
+// Filas con fórmula agrupadas por el ajuste que llevan al final.
+// Devuelve [{ ajuste, filas: [...] }] de mayor a menor.
+function _gruposDeAjuste() {
+  const mapa = new Map();
+  _filasConFormula().forEach(f => {
+    const p = _partirAjuste(f.formula);
+    if (!p) return;
+    const clave = p.ajuste;
+    if (!mapa.has(clave)) mapa.set(clave, []);
+    mapa.get(clave).push({ ...f, base: p.base, ajuste: p.ajuste });
+  });
+  return [...mapa.entries()]
+    .map(([ajuste, filas]) => ({ ajuste, filas }))
+    .sort((a, b) => b.filas.length - a.filas.length);
+}
+
 function actualizarAvisoFormulas() {
   const chip = document.getElementById('chip-formulas');
   if (!chip) return;
@@ -1591,6 +1629,10 @@ function renderModalFormulas() {
   const lista = _filasConFormula();
   const malas = lista.filter(f => !f.ok).length;
 
+  renderLoteFormulas();
+  const lote = document.getElementById('fx-lote');
+  if (lote) lote.style.display = lista.length ? 'block' : 'none';
+
   if (res) {
     res.textContent = !lista.length
       ? 'Ningún importe usa fórmulas.'
@@ -1615,6 +1657,156 @@ function renderModalFormulas() {
       <button class="fx-ver" onclick="irAFila(${f.id})" title="Ver esta fila en el documento">Ver</button>
     </div>`;
   }).join('');
+}
+
+// =============================================
+//  EDITAR EN LOTE LAS FÓRMULAS YA APLICADAS
+//
+//  Si 41 filas acabaron en "+15%", cambiarlas una por una no es
+//  opción. Aquí se agrupan por el ajuste final y se pueden:
+//    · cambiar por otro ajuste  → (base)+10%
+//    · quitar el ajuste         → vuelve la base
+//    · convertir en número      → se pierde la fórmula, queda el total
+// =============================================
+
+// Selección vigente del modal: 'aj:<ajuste>' o 'todas'
+function _seleccionLote() {
+  const sel    = document.getElementById('fx-sel-grupo');
+  const valor  = sel?.value || '';
+  const grupos = _gruposDeAjuste();
+
+  if (valor === 'todas' || !valor) {
+    return { valor: valor || 'todas', ajuste: null, filas: _filasConFormula() };
+  }
+  const ajuste = valor.slice(3);
+  const grupo  = grupos.find(g => g.ajuste === ajuste);
+  return { valor, ajuste, filas: grupo ? grupo.filas : [] };
+}
+
+// Fórmula nueva al cambiar el ajuste final de una fila
+function _reemplazarAjuste(base, ajuste) {
+  return (Formula.esFormula(base) ? '(' + base + ')' : base) + ajuste;
+}
+
+function renderLoteFormulas() {
+  const sel = document.getElementById('fx-sel-grupo');
+  if (!sel) return;
+
+  const grupos = _gruposDeAjuste();
+  const total  = _filasConFormula().length;
+  const previo = sel.value;
+
+  sel.innerHTML =
+    grupos.map(g => `<option value="aj:${escHTML(g.ajuste)}">${escHTML(g.ajuste)} — ${g.filas.length} fila${g.filas.length > 1 ? 's' : ''}</option>`).join('')
+    + `<option value="todas">Todas las fórmulas — ${total} fila${total === 1 ? '' : 's'}</option>`;
+  // Conserva la selección si el grupo sigue existiendo
+  if (previo && [...sel.options].some(o => o.value === previo)) sel.value = previo;
+  else if (grupos.length) sel.value = 'aj:' + grupos[0].ajuste;
+  else sel.value = 'todas';
+
+  previsualizarLote();
+}
+
+function previsualizarLote() {
+  const nota  = document.getElementById('fx-lote-nota');
+  const inp   = document.getElementById('fx-nuevo-ajuste');
+  const bCam  = document.getElementById('fx-btn-cambiar');
+  const bQui  = document.getElementById('fx-btn-quitar');
+  const bNum  = document.getElementById('fx-btn-numero');
+  const bUnd  = document.getElementById('fx-btn-deshacer');
+  if (!nota) return;
+
+  if (bUnd) {
+    const hay = _ultimoAjuste && _ultimoAjuste.tab === TabManager.activeId;
+    bUnd.style.display = hay ? 'inline-block' : 'none';
+    if (hay) bUnd.textContent = '↶ Deshacer ' + _ultimoAjuste.ajuste;
+  }
+
+  const sel   = _seleccionLote();
+  const nuevo = _normalizarAjuste(inp?.value);
+  const valido = nuevo && Formula.evaluar('1000' + nuevo).ok;
+  const conAjuste = !!sel.ajuste && sel.filas.length > 0;
+
+  if (bCam) bCam.disabled = !(conAjuste && valido);
+  if (bQui) bQui.disabled = !conAjuste;
+  if (bNum) bNum.disabled = !sel.filas.length;
+  if (inp)  inp.disabled  = !conAjuste;
+
+  if (!sel.filas.length) { nota.textContent = 'No hay fórmulas que cambiar.'; nota.className = 'fx-lote-nota'; return; }
+
+  if (nuevo && !valido) {
+    nota.textContent = 'El ajuste nuevo no es válido: ' + (Formula.evaluar('1000' + nuevo).error || '');
+    nota.className   = 'fx-lote-nota fx-lote-error';
+    return;
+  }
+
+  // Ejemplo con la primera fila, para ver en qué queda
+  const f = sel.filas[0];
+  let ejemplo;
+  if (conAjuste && valido) {
+    const nf = _reemplazarAjuste(f.base, nuevo);
+    const r  = Formula.evaluar(nf);
+    ejemplo = `${f.formula} → ${nf} = ${r.ok ? formatNum(r.valor) : '?'}`;
+  } else if (conAjuste) {
+    const r = Formula.evaluar(f.base);
+    ejemplo = `Quitar “${sel.ajuste}”: ${f.formula} → ${f.base} = ${r.ok ? formatNum(r.valor) : '?'}`;
+  } else {
+    ejemplo = `Convertir en número: ${f.formula} → ${formatNum(f.valor)}`;
+  }
+  nota.textContent = `${sel.filas.length} fila${sel.filas.length > 1 ? 's' : ''} · ej. fila ${f.num}: ${ejemplo}`;
+  nota.className   = 'fx-lote-nota';
+}
+
+//  modo: 'cambiar' | 'quitar' | 'numero'
+function aplicarLoteFormulas(modo) {
+  const sel = _seleccionLote();
+  if (!sel.filas.length) return;
+
+  let nuevo = '';
+  if (modo === 'cambiar') {
+    nuevo = _normalizarAjuste(document.getElementById('fx-nuevo-ajuste')?.value);
+    const prueba = Formula.evaluar('1000' + nuevo);
+    if (!nuevo || !prueba.ok) { mostrarToast('Escribe un ajuste válido, por ejemplo +10%', true); return; }
+  }
+  if ((modo === 'cambiar' || modo === 'quitar') && !sel.ajuste) return;
+
+  const previo = [];
+  let n = 0;
+  sel.filas.forEach(info => {
+    const fila = cot.items.find(f => f.id === info.id);
+    if (!fila) return;
+    const antes = { id: fila.id, monto: fila.monto, formula: fila.formula || '' };
+
+    if (modo === 'numero') {
+      fila.formula = '';                       // el monto ya es el resultado
+    } else if (modo === 'quitar') {
+      const r = Formula.evaluar(info.base);
+      if (!r.ok) return;
+      fila.monto   = r.valor;
+      fila.formula = r.esFormula ? info.base : '';
+    } else {
+      const nf = _reemplazarAjuste(info.base, nuevo);
+      const r  = Formula.evaluar(nf);
+      if (!r.ok) return;
+      fila.monto   = r.valor;
+      fila.formula = nf;
+    }
+    previo.push(antes);
+    n++;
+  });
+
+  if (!n) { mostrarToast('No se pudo cambiar ninguna fila', true); return; }
+
+  const etiqueta = modo === 'cambiar' ? `${sel.ajuste} → ${nuevo}`
+                 : modo === 'quitar'  ? `quitar ${sel.ajuste}`
+                 : 'fórmulas a número';
+  _ultimoAjuste = { tab: TabManager.activeId, ajuste: etiqueta, previo: previo };
+
+  renderFilas();
+  calcularTotales();
+  TabManager.marcarSinGuardar();
+  renderModalFormulas();                       // el listado se refresca en sitio
+  mostrarToast(`${n === 1 ? '1 fila' : n + ' filas'}: ${etiqueta}`);
 }
 
 // Cierra el modal, lleva la fila a la vista y la resalta un momento

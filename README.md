@@ -162,6 +162,30 @@ Toma `window.EMPRESA` y llena el DOM del encabezado: logo, nombre, dirección, R
 
 `renderBanco(ba, em)` rellena el grid de cuentas de la plantilla clásica y, en LAPS, reconstruye las líneas bancarias con `Plantilla.lineasBanco()`. En LAPS `#doc-banco-nombre` es el contenedor de **todas** las líneas (banco, cuenta, páguese a, RNC), no sólo del nombre: escribir ahí un solo texto borraba las demás.
 
+#### 7.2.1 Overrides de Empresa (`EmpresaCfg`)
+
+Lo que se escribe en **Opciones → Empresa y banco** se guarda en `localStorage`
+(`jt_empresa_cfg`, indexado por perfil) y se aplica encima de `data/empresa.js`, que queda
+intacto.
+
+Dos reglas que evitan perder datos sin darse cuenta:
+
+- **Un campo en blanco no es un override**: significa "usa el valor de `data/empresa.js`".
+  Antes se guardaba el vacío y se aplicaba encima, así que un campo que se quedó sin llenar
+  al pulsar *Aplicar* borraba ese dato del documento **para siempre** y sin señal alguna —
+  era lo que hacía desaparecer la cuenta bancaria de LAPS. Ahora sólo se persisten los
+  campos con contenido, y vaciar uno equivale a quitarle el override.
+- **`EmpresaCfg.base(sec, key)`** guarda una copia intacta de `window.PERFILES` (en
+  `window.PERFILES_BASE`) antes de aplicar cualquier override, porque `aplicarGuardado()`
+  escribe sobre los objetos del perfil. Sin esa copia, quitar un override no podía devolver
+  el valor de partida.
+
+`guardarEmpresaOpciones()` actualiza además el vendedor y el texto de validez del documento
+abierto **si aún mostraban el defecto anterior** — comparando contra el valor que tenían los
+defectos antes de guardar. Si se escribió un nombre a mano en el documento, se respeta.
+(Antes sólo los rellenaba cuando el campo estaba vacío, y como la plantilla LAPS los
+pre-rellena, nunca se actualizaban.)
+
 #### 7.3 TabManager
 Objeto que gestiona las pestañas abiertas. Cada pestaña es `{ id, tipo, numero, dbId, sinGuardar }`.
 

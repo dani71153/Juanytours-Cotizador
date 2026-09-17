@@ -69,6 +69,7 @@ const Perfiles = {
   iniciar() {
     const id = this.activoId();
     this._resolver(id);
+    EmpresaCfg.base('empresa', 'rnc');   // fija la copia intacta de empresa.js
     EmpresaCfg.aplicarGuardado();
     return id;
   },
@@ -268,6 +269,12 @@ function renderBanco(ba, em) {
 //  CONFIGURACIÓN DE EMPRESA / BANCO EDITABLE
 //  Guarda overrides en localStorage y los aplica
 //  sobre window.EMPRESA (data/empresa.js queda intacto).
+//
+//  Un override en blanco NO tapa el dato de data/empresa.js: si se
+//  guardaba vacío (por ejemplo al aplicar el formulario con un campo
+//  sin llenar), ese dato desaparecía del documento para siempre y no
+//  había forma de notarlo — era lo que hacía desaparecer la cuenta
+//  bancaria de LAPS. Vacío significa "usa el valor de empresa.js".
 // =============================================
 const EmpresaCfg = {
   KEY: 'jt_empresa_cfg',
@@ -300,13 +307,29 @@ const EmpresaCfg = {
     return this.leerTodo()[Perfiles.activoId()] || {};
   },
 
+  // Valor original de data/empresa.js, sin overrides encima.
+  // Hace falta una copia intacta porque aplicarGuardado() escribe
+  // sobre los objetos de window.PERFILES: sin ella, quitar un
+  // override no devolvería el valor de partida.
+  base(sec, key) {
+    if (!window.PERFILES_BASE) {
+      try { window.PERFILES_BASE = JSON.parse(JSON.stringify(window.PERFILES || {})); }
+      catch (e) { window.PERFILES_BASE = {}; }
+    }
+    return window.PERFILES_BASE[Perfiles.activoId()]?.[sec]?.[key];
+  },
+
   // Mezcla el override guardado sobre window.EMPRESA
   aplicarGuardado() {
     const cfg = this.leer();
     const E   = window.EMPRESA;
     if (!E) return;
     Object.values(this.CAMPOS).forEach(([sec, key]) => {
-      const val = cfg[sec]?.[key];
+      const guardado = cfg[sec]?.[key];
+      // Vacío = sin override: manda el valor de data/empresa.js
+      const val = (guardado === undefined || String(guardado).trim() === '')
+        ? this.base(sec, key)
+        : guardado;
       if (val === undefined) return;
       E[sec] = E[sec] || {};        // p.ej. "defectos" no existe en todos los perfiles
       E[sec][key] = val;
@@ -322,17 +345,24 @@ const EmpresaCfg = {
     });
   },
 
-  // Lee los inputs, persiste y refresca el documento
+  // Lee los inputs, persiste y refresca el documento.
+  // Sólo se guardan los campos con contenido: dejar uno en blanco
+  // equivale a quitarle el override y volver a data/empresa.js.
   guardarDesdeInputs() {
     const cfg = {};
     const E   = window.EMPRESA || {};
     Object.entries(this.CAMPOS).forEach(([id, [sec, key]]) => {
       const inp = document.getElementById(id);
       if (!inp) return;
-      const val = inp.value.trim();
-      (cfg[sec] = cfg[sec] || {})[key] = val;
+      const val  = inp.value.trim();
+      const base = this.base(sec, key);
       E[sec] = E[sec] || {};
-      E[sec][key] = val;
+      if (val === '') {
+        E[sec][key] = base !== undefined ? base : '';
+      } else {
+        (cfg[sec] = cfg[sec] || {})[key] = val;
+        E[sec][key] = val;
+      }
     });
     try {
       const todo = this.leerTodo();

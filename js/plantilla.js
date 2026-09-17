@@ -439,7 +439,9 @@ ${bancoHTML}
     <!-- PIE DE FIRMAS -->
     <div class="laps-firmas">
       <div class="laps-firma">REALIZADA POR EL VENDEDOR:
-        <span contenteditable="true" id="doc-vendedor" data-placeholder="Nombre del vendedor">${esc(e.vendedor || def.vendedor || '')}</span>
+        <span class="cli-val" contenteditable="true" id="doc-vendedor"
+              title="Clic para escribir otro vendedor en esta cotizaci&oacute;n"
+              data-placeholder="Nombre del vendedor">${esc(e.vendedor || def.vendedor || '')}</span>
       </div>
       <div class="laps-firma">RECIBIDO POR</div>
     </div>

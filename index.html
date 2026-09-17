@@ -4,9 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Cotizador — Juanytours</title>
-  <link rel="stylesheet" href="css/estilos.css?v=17" />
-  <link rel="stylesheet" href="css/biblioteca.css?v=17" />
-  <link rel="stylesheet" href="css/plantilla-laps.css?v=17" />
+  <link rel="stylesheet" href="css/estilos.css?v=18" />
+  <link rel="stylesheet" href="css/biblioteca.css?v=18" />
+  <link rel="stylesheet" href="css/plantilla-laps.css?v=18" />
 </head>
 <body>
 
@@ -413,7 +413,7 @@
               <span class="opc-campo-lbl">Texto de validez</span>
               <input type="text" class="opc-inp" id="opc-emp-valido" placeholder="Valido hasta 31 Diciembre 2026" />
             </label>
-            <p class="opc-explica">Son los valores por defecto de las cotizaciones nuevas. En cada documento puedes escribir encima sin cambiar esto.</p>
+            <p class="opc-explica">Son los valores por defecto de las cotizaciones nuevas. En cada documento puedes escribir encima sin cambiar esto. Al aplicar, el documento abierto se actualiza si a&uacute;n mostraba el valor por defecto anterior.</p>
           </div>
 
           <div class="opc-seccion">
@@ -469,6 +469,7 @@
               <span class="opc-campo-lbl">SWIFT</span>
               <input type="text" class="opc-inp" id="opc-ban-swift" placeholder="BRRDDOSD" />
             </label>
+            <p class="opc-explica">Un campo en blanco usa el valor de <code>data/empresa.js</code>: as&iacute;, dejar una cuenta vac&iacute;a por error no la borra del documento.</p>
           </div>
 
           <div class="opc-seccion opc-seccion-acciones">
@@ -492,14 +493,14 @@
   <!-- ===== TOAST DE GUARDADO ===== -->
   <div id="toast-guardado" class="toast-guardado no-print" style="display:none">&#x2713; Guardado</div>
 
-  <script src="data/empresa.js?v=17"></script>
-  <script src="shared/tasa.js?v=17"></script>
-  <script src="database/db.js?v=17"></script>
-  <script src="database/cotizaciones.js?v=17"></script>
-  <script src="permanencia/sesion.js?v=17"></script>
-  <script src="permanencia/borrador.js?v=17"></script>
-  <script src="js/formula.js?v=17"></script>
-  <script src="js/plantilla.js?v=17"></script>
-  <script src="js/app.js?v=17"></script>
+  <script src="data/empresa.js?v=18"></script>
+  <script src="shared/tasa.js?v=18"></script>
+  <script src="database/db.js?v=18"></script>
+  <script src="database/cotizaciones.js?v=18"></script>
+  <script src="permanencia/sesion.js?v=18"></script>
+  <script src="permanencia/borrador.js?v=18"></script>
+  <script src="js/formula.js?v=18"></script>
+  <script src="js/plantilla.js?v=18"></script>
+  <script src="js/app.js?v=18"></script>
 </body>
 </html>

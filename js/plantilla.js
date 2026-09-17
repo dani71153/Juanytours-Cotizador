@@ -74,13 +74,17 @@
         const visible = f.visible !== false;
         const cant    = f.cantidad || 1;
         const monto   = f.monto || 0;
+        // Si el importe se escribió como fórmula, viaja en data-formula
+        // para poder seguir editándola en el archivo exportado.
+        const fmla    = f.formula || '';
+        const attrF   = fmla ? ` data-formula="${esc(fmla).replace(/"/g, '&quot;')}" title="F&oacute;rmula: ${esc(fmla).replace(/"/g, '&quot;')}"` : '';
         const cNum    = laps ? '' : `        <td class="td-num">${numItem}</td>\n`;
         const cUnidad = laps ? `        <td class="td-unidad" contenteditable="true" data-field="unidad" data-placeholder="UNIDAD">${esc(f.unidad || 'UNIDAD')}</td>\n` : '';
         const cLinea  = laps ? `        <td class="td-linea" data-field="linea">${num(monto * cant)}</td>\n` : '';
         html += `      <tr data-tipo="${tipo}"${visible ? '' : ' class="fila-oculta"'}>
 ${cNum}        <td class="td-det" contenteditable="true" data-field="desc" data-placeholder="Descripci&oacute;n del servicio">${esc(f.desc || '')}</td>
 ${cUnidad}        <td class="td-cantidad" contenteditable="true" data-field="cantidad" data-placeholder="1">${cant}</td>
-        <td class="td-monto" contenteditable="true" data-field="monto" data-placeholder="0.00">${num(monto)}</td>
+        <td class="td-monto${fmla ? ' con-formula' : ''}" contenteditable="true" data-field="monto" data-placeholder="0.00"${attrF}>${num(monto)}</td>
 ${cLinea}        <td class="td-tipo no-print">
           <select class="sel-tipo-item">
             <option value="exento"${tipo === 'exento' ? ' selected' : ''}>Exento</option>
@@ -211,7 +215,7 @@ ${cLinea}        <td class="td-tipo no-print">
           <th class="th-num">Cant.</th>
           <th class="th-det">Detalles</th>
           <th class="th-cantidad">Cantidad</th>
-          <th class="th-monto">Monto</th>
+          <th class="th-monto" title="Acepta f&oacute;rmulas: 1500+1500*10%, 1500+10%, (120+30)*2">Monto</th>
           <th class="th-tipo no-print">Tipo</th>
 ${editor ? '          <th class="th-del  no-print"></th>\n' : ''}        </tr>
       </thead>
@@ -372,7 +376,7 @@ ${editor ? '          <span id="tasa-indicador" class="tasa-indicador tasa-ind-o
           <th class="th-det">DESCRIPCI&Oacute;N</th>
           <th class="th-unidad">UD. M</th>
           <th class="th-cantidad">CANTIDAD</th>
-          <th class="th-monto">IMPORTE</th>
+          <th class="th-monto" title="Acepta f&oacute;rmulas: 1500+1500*10%, 1500+10%, (120+30)*2">IMPORTE</th>
           <th class="th-linea">TOTAL</th>
           <th class="th-tipo no-print">Tipo</th>
 ${editor ? '          <th class="th-del  no-print"></th>\n' : ''}        </tr>

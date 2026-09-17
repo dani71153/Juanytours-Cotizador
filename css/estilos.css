@@ -73,6 +73,7 @@ body {
 .btn-nuevo   { background: #fff;    color: var(--azul-dark); }
 .btn-agregar { background: #28A745; color: #fff; }
 .btn-nota    { background: #8C6A00; color: #fff; }
+.btn-ajustar { background: #0F766E; color: #fff; }
 .btn-tasa    { background: #5A3EA1; color: #fff; }
 .btn-opciones  { background: #4A5568; color: #fff; }
 
@@ -348,6 +349,61 @@ body.vista-impresion .cli-label-ncf #lbl-ncf { display: inline; }
   width: 120px;
   vertical-align: middle;
   font-weight: 500;
+}
+
+/* ── Importes con fórmula (ver js/formula.js) ──
+     La celda muestra el resultado; la fórmula queda guardada en
+     data-formula y reaparece al enfocar la celda. El triangulito
+     es una marca de editor: no se imprime. */
+.td-monto.con-formula,
+.td-monto.formula-error { position: relative; }
+
+.td-monto.con-formula::after,
+.td-monto.formula-error::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  border-top: 5px solid var(--azul, #003A78);
+  border-right: 5px solid transparent;
+  opacity: .8;
+}
+.td-monto.formula-error {
+  background: #FEE2E2;
+  color: #991B1B;
+}
+.td-monto.formula-error::after { border-top-color: #991B1B; }
+
+/* Globito con el resultado en vivo mientras se escribe la fórmula */
+.formula-globo {
+  display: none;
+  position: fixed;
+  z-index: 3000;
+  background: #0F2A4A;
+  color: #fff;
+  font-family: var(--fuente, Arial, Helvetica, sans-serif);
+  font-size: 12px;
+  font-weight: bold;
+  padding: 5px 10px;
+  border-radius: 5px;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, .28);
+  pointer-events: none;
+  white-space: nowrap;
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.formula-globo-error { background: #8B0000; font-weight: normal; }
+
+/* La marca de fórmula es ayuda del editor: fuera en impresión */
+body.vista-impresion .td-monto.con-formula::after,
+body.vista-impresion .td-monto.formula-error::after { display: none !important; }
+body.vista-impresion .td-monto.formula-error { background: none !important; color: inherit !important; }
+@media print {
+  .td-monto.con-formula::after,
+  .td-monto.formula-error::after { display: none !important; }
+  .td-monto.formula-error { background: none !important; color: inherit !important; }
+  .formula-globo { display: none !important; }
 }
 
 .td-tipo {
@@ -842,6 +898,152 @@ body.vista-impresion .cli-label-ncf #lbl-ncf { display: inline; }
   transition: background .15s;
 }
 .btn-modal-ok:hover { background: var(--azul-dark); }
+.btn-modal-ok:disabled { background: #B8C4D4; cursor: not-allowed; }
+
+/* =============================================
+   MODAL — AJUSTAR IMPORTES
+   Aplica un ajuste (+10%, *1.18, +250…) a un rango de filas.
+   ============================================= */
+.modal-ajuste-card { width: 540px; }
+
+.aj-seccion { padding: 16px 22px; }
+.aj-seccion .modal-desc { margin-bottom: 14px; }
+
+.aj-fila-campo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.aj-etq {
+  font-size: 12.5px;
+  font-weight: bold;
+  color: #445;
+  width: 92px;
+  flex-shrink: 0;
+}
+.aj-inp, .aj-sel {
+  flex: 1;
+  padding: 7px 10px;
+  border: 1px solid #C8D2DE;
+  border-radius: 5px;
+  font-family: var(--fuente);
+  font-size: 13px;
+  background: #fff;
+  color: var(--negro);
+}
+.aj-inp {
+  font-weight: bold;
+  letter-spacing: .3px;
+}
+.aj-inp:focus, .aj-sel:focus { outline: none; border-color: var(--azul-dark); }
+
+.aj-chips {
+  display: flex;
+  gap: 6px;
+  margin: 9px 0 0 102px;
+  flex-wrap: wrap;
+}
+.aj-chip {
+  padding: 4px 10px;
+  border: 1px solid #C8D2DE;
+  border-radius: 20px;
+  background: #F4F7FB;
+  color: #33475B;
+  font-family: var(--fuente);
+  font-size: 11.5px;
+  font-weight: bold;
+  cursor: pointer;
+}
+.aj-chip:hover { background: #E3ECF7; border-color: var(--azul); color: var(--azul-dark); }
+
+.aj-ayuda {
+  margin: 10px 0 0 102px;
+  font-size: 11.5px;
+  color: #7A8899;
+  line-height: 1.5;
+}
+.aj-ayuda code {
+  background: #EEF2F7;
+  border-radius: 3px;
+  padding: 1px 4px;
+  font-size: 11px;
+  color: #33475B;
+}
+
+.aj-rango {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px dashed #E2E8F0;
+}
+
+/* ── Vista previa del ajuste ── */
+.aj-preview-titulo {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  font-size: 12.5px;
+  font-weight: bold;
+  color: #445;
+  margin-bottom: 8px;
+}
+.aj-preview-conteo { font-weight: normal; font-size: 11.5px; color: #7A8899; }
+
+.aj-preview {
+  max-height: 210px;
+  overflow-y: auto;
+  border: 1px solid #E2E8F0;
+  border-radius: 6px;
+  background: #FAFCFE;
+}
+
+.aj-tabla {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+.aj-tabla td {
+  padding: 5px 8px;
+  border-bottom: 1px solid #EDF1F6;
+  vertical-align: middle;
+}
+.aj-tabla tr:last-child td { border-bottom: none; }
+.aj-t-num    { width: 24px; color: #8A98A8; text-align: right; font-size: 11.5px; }
+.aj-t-desc   { color: #33475B; }
+.aj-t-viejo  { text-align: right; color: #8A98A8; white-space: nowrap; }
+.aj-t-flecha { width: 16px; text-align: center; color: #A8B4C2; }
+.aj-t-nuevo  { text-align: right; font-weight: bold; color: #1A6B3C; white-space: nowrap; }
+.aj-t-oculta .aj-t-desc::after {
+  content: ' · oculta';
+  color: #B0BCC8;
+  font-style: italic;
+  font-size: 11px;
+}
+
+.aj-total {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 10px;
+  font-size: 12px;
+  color: #7A8899;
+}
+.aj-total:empty { display: none; }
+.aj-total-val { white-space: nowrap; color: #33475B; }
+
+.aj-vacio, .aj-error {
+  padding: 14px;
+  font-size: 12.5px;
+  text-align: center;
+  margin: 0;
+}
+.aj-vacio { color: #A0AEC0; font-style: italic; }
+.aj-error { color: #991B1B; }
+
+.aj-deshacer { margin-right: auto; }
 
 /* ── Indicador de tasa en el documento ── */
 .tasa-indicador {

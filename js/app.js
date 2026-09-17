@@ -5,7 +5,9 @@
 
 // Estado del editor (cotización actualmente visible)
 const cot = {
-  items: []     // tipo 'item': { id, type, desc, cantidad, monto, tipo }
+  items: []     // tipo 'item': { id, type, desc, cantidad, monto, formula, tipo }
+                //   formula: texto tal como se escribió ('1500+10%'), vacío
+                //   si el importe se puso como número — ver js/formula.js
                 // tipo 'nota': { id, type, texto }
 };
 
@@ -1000,7 +1002,7 @@ function importarRespaldoJSON() {
 
 function agregarFila() {
   contadorFilas++;
-  cot.items.push({ id: contadorFilas, type: 'item', desc: '', cantidad: 1, monto: 0, tipo: 'exento' });
+  cot.items.push({ id: contadorFilas, type: 'item', desc: '', cantidad: 1, monto: 0, formula: '', tipo: 'exento' });
   renderFilas();
   TabManager.marcarSinGuardar();
 }
@@ -1075,6 +1077,12 @@ function renderFilas() {
       const celdaLinea  = laps
         ? `<td class="td-linea" data-field="linea">${formatNum((fila.monto || 0) * (fila.cantidad || 1))}</td>`
         : '';
+      // Importe: si se escribió como fórmula se muestra el resultado y la
+      // fórmula queda guardada. Una fórmula rota se muestra tal cual, para
+      // que el error salte a la vista en lugar de imprimir un 0.00 mudo.
+      const evalF  = fila.formula ? Formula.evaluar(fila.formula) : null;
+      const claseF = !evalF ? '' : (evalF.ok ? ' con-formula' : ' formula-error');
+      const textoF = (evalF && !evalF.ok) ? escHTML(fila.formula) : formatNum(fila.monto);
       tr.innerHTML = `
         ${celdaNum}
         <td class="td-det" contenteditable="true" data-field="desc"
@@ -1083,8 +1091,8 @@ function renderFilas() {
         ${celdaUnidad}
         <td class="td-cantidad" contenteditable="true" data-field="cantidad"
             data-placeholder="1">${fila.cantidad}</td>
-        <td class="td-monto"   contenteditable="true" data-field="monto"
-            data-placeholder="0.00">${formatNum(fila.monto)}</td>
+        <td class="td-monto${claseF}" contenteditable="true" data-field="monto"
+            data-placeholder="0.00"${Formula.attrsCelda(fila)}>${textoF}</td>
         ${celdaLinea}
         <td class="td-tipo no-print">
           <select class="sel-tipo-item" onchange="cambiarTipo(${fila.id}, this.value)">
@@ -1098,8 +1106,20 @@ function renderFilas() {
         </td>`;
 
       tr.querySelectorAll('[contenteditable]').forEach(cel => {
+        // El importe lo maneja Formula: acepta fórmulas, no sólo números
+        if (cel.dataset.field === 'monto') {
+          Formula.engancharCelda(cel, {
+            alCambiar: (valor, formula) => {
+              fila.monto   = valor;
+              fila.formula = formula;
+              calcularTotales();
+            },
+            alGuardar: () => TabManager.marcarSinGuardar()
+          });
+          return;
+        }
         cel.addEventListener('blur',  () => { actualizarFila(fila.id, cel.dataset.field, cel.innerText.trim()); TabManager.marcarSinGuardar(); });
-        cel.addEventListener('input', () => { if (cel.dataset.field === 'monto' || cel.dataset.field === 'cantidad') calcularTotales(); });
+        cel.addEventListener('input', () => { if (cel.dataset.field === 'cantidad') calcularTotales(); });
       });
     }
 
@@ -1120,7 +1140,12 @@ function actualizarFila(id, campo, valor) {
   const fila = cot.items.find(f => f.id === id);
   if (!fila) return;
   if (campo === 'cantidad') fila.cantidad = parseFloat(valor) || 1;
-  else if (campo === 'monto')  fila.monto  = parseMonto(valor);
+  else if (campo === 'monto') {
+    // Puede venir una fórmula ("1500+10%"); se guarda el texto y el resultado
+    const r = Formula.evaluar(valor);
+    fila.monto   = r.ok ? r.valor : 0;
+    fila.formula = (r.esFormula || !r.ok) ? String(valor).trim() : '';
+  }
   else if (campo === 'desc')   fila.desc   = valor;
   else if (campo === 'unidad') fila.unidad = valor;
   calcularTotales();
@@ -1129,6 +1154,208 @@ function actualizarFila(id, campo, valor) {
 function cambiarTipo(id, tipo) {
   const fila = cot.items.find(f => f.id === id);
   if (fila) { fila.tipo = tipo; calcularTotales(); }
+}
+
+// =============================================
+//  AJUSTE DE IMPORTES POR RANGO DE FILAS
+//
+//  Aplica un mismo ajuste (+10%, *1.18, +250…) a los importes de las
+//  filas elegidas y los deja como fórmula editable, para que después
+//  se pueda ver de dónde salió el precio:
+//
+//    1500      con "+10%"   →  1500+10%         = 1,650.00
+//    1500+200  con "*1.18"  →  (1500+200)*1.18  = 2,006.00
+//
+//  El importe viejo se envuelve en paréntesis cuando ya era una
+//  fórmula: así el ajuste se aplica al total de la celda y no se
+//  cuela entre sus operadores.
+// =============================================
+
+// Ítems (las notas no cuentan) con el número de fila que se ve en la tabla
+function _itemsConNumero() {
+  let n = 0;
+  return cot.items
+    .filter(f => f.type === 'item')
+    .map(f => ({ fila: f, num: ++n }));
+}
+
+// Sin signo delante se entiende que el ajuste suma: "250" → "+250"
+function _normalizarAjuste(txt) {
+  const s = String(txt || '').replace(/\s+/g, '');
+  if (!s) return '';
+  return /^[+\-*/x×÷]/i.test(s) ? s : '+' + s;
+}
+
+function _formulaAjustada(fila, ajuste) {
+  const viejo = fila.formula || String(fila.monto || 0);
+  const base  = Formula.esFormula(viejo) ? '(' + viejo + ')' : viejo;
+  return base + ajuste;
+}
+
+// Lee el estado del modal: { ajuste, desde, hasta, items, enRango, error }
+function _leerAjuste() {
+  const items  = _itemsConNumero();
+  const ajuste = _normalizarAjuste(document.getElementById('inp-ajuste')?.value);
+  let desde = parseInt(document.getElementById('sel-ajuste-desde')?.value, 10) || 1;
+  let hasta = parseInt(document.getElementById('sel-ajuste-hasta')?.value, 10) || items.length;
+  if (hasta < desde) [desde, hasta] = [hasta, desde];   // rango al revés: se endereza
+
+  let error = '';
+  if (!items.length)    error = 'Esta cotización no tiene servicios.';
+  else if (!ajuste)     error = '';                     // aún no escribió nada
+  else {
+    const prueba = Formula.evaluar('1000' + ajuste);
+    if (!prueba.ok) error = 'Ajuste inválido: ' + prueba.error;
+  }
+
+  return {
+    ajuste, desde, hasta, items, error,
+    enRango: items.filter(it => it.num >= desde && it.num <= hasta)
+  };
+}
+
+// Snapshot del último ajuste para poder deshacerlo
+let _ultimoAjuste = null;
+
+function abrirModalAjuste() {
+  const modal = document.getElementById('modal-ajuste');
+  if (!modal) return;
+  _syncItemsDesdeDOM();                 // recoge lo que se esté editando
+  _llenarSelectsAjuste();
+  modal.classList.add('visible');
+  const inp = document.getElementById('inp-ajuste');
+  if (inp) { inp.oninput = previsualizarAjuste; inp.focus(); inp.select(); }
+  previsualizarAjuste();
+}
+
+function cerrarModalAjuste() {
+  document.getElementById('modal-ajuste')?.classList.remove('visible');
+}
+
+function ponerAjuste(txt) {
+  const inp = document.getElementById('inp-ajuste');
+  if (!inp) return;
+  inp.value = txt;
+  inp.focus();
+  previsualizarAjuste();
+}
+
+function _llenarSelectsAjuste() {
+  const selDesde = document.getElementById('sel-ajuste-desde');
+  const selHasta = document.getElementById('sel-ajuste-hasta');
+  if (!selDesde || !selHasta) return;
+
+  const items = _itemsConNumero();
+  const opts  = items.map(it => {
+    const d = (it.fila.desc || '').replace(/\s+/g, ' ').trim();
+    const t = d ? (d.length > 34 ? d.slice(0, 34) + '…' : d) : '(sin descripción)';
+    const o = it.fila.visible === false ? ' · oculta' : '';
+    return `<option value="${it.num}">${it.num}. ${escHTML(t)}${o}</option>`;
+  }).join('');
+
+  selDesde.innerHTML = opts;
+  selHasta.innerHTML = opts;
+  if (items.length) { selDesde.value = 1; selHasta.value = items.length; }
+}
+
+function previsualizarAjuste() {
+  const cont   = document.getElementById('aj-preview');
+  const conteo = document.getElementById('aj-conteo');
+  const btnOk  = document.getElementById('btn-aplicar-ajuste');
+  const btnUnd = document.getElementById('btn-deshacer-ajuste');
+  if (!cont) return;
+
+  if (btnUnd) {
+    const hay = _ultimoAjuste && _ultimoAjuste.tab === TabManager.activeId;
+    btnUnd.style.display = hay ? 'inline-block' : 'none';
+    if (hay) btnUnd.textContent = '↶ Deshacer ' + _ultimoAjuste.ajuste;
+  }
+
+  const total = document.getElementById('aj-total');
+  const est   = _leerAjuste();
+  const aplicable = !est.error && est.ajuste && est.enRango.length > 0;
+  if (btnOk) btnOk.disabled = !aplicable;
+  if (conteo) conteo.textContent = aplicable
+    ? (est.enRango.length === 1 ? '1 fila' : est.enRango.length + ' filas')
+    : '';
+  if (total) total.innerHTML = '';
+
+  if (est.error)   { cont.innerHTML = `<p class="aj-error">${escHTML(est.error)}</p>`; return; }
+  if (!est.ajuste) { cont.innerHTML = '<p class="aj-vacio">Escribe un ajuste para ver el resultado.</p>'; return; }
+  if (!est.enRango.length) { cont.innerHTML = '<p class="aj-vacio">El rango elegido no incluye ninguna fila.</p>'; return; }
+
+  let viejoTot = 0, nuevoTot = 0;
+  const filas = est.enRango.map(it => {
+    const cant   = it.fila.cantidad || 1;
+    const viejo  = it.fila.monto || 0;
+    const nueva  = _formulaAjustada(it.fila, est.ajuste);
+    const r      = Formula.evaluar(nueva);
+    const nuevo  = r.ok ? r.valor : viejo;
+    viejoTot += viejo * cant;
+    nuevoTot += nuevo * cant;
+    const d = (it.fila.desc || '').replace(/\s+/g, ' ').trim();
+    const t = d ? (d.length > 26 ? d.slice(0, 26) + '…' : d) : '(sin descripción)';
+    return `<tr${it.fila.visible === false ? ' class="aj-t-oculta"' : ''}>
+      <td class="aj-t-num">${it.num}</td>
+      <td class="aj-t-desc" title="${escHTML(d)}">${escHTML(t)}</td>
+      <td class="aj-t-viejo">${formatNum(viejo)}</td>
+      <td class="aj-t-flecha">&#8594;</td>
+      <td class="aj-t-nuevo">${formatNum(nuevo)}</td>
+    </tr>`;
+  }).join('');
+
+  cont.innerHTML = `<table class="aj-tabla">${filas}</table>`;
+  if (total) total.innerHTML =
+    `<span>Suma de las filas afectadas (importe &#215; cantidad)</span>
+     <span class="aj-total-val">${formatNum(viejoTot)} &#8594; <strong>${formatNum(nuevoTot)}</strong></span>`;
+}
+
+function aplicarAjuste() {
+  const est = _leerAjuste();
+  if (est.error)   { mostrarToast(est.error, true); return; }
+  if (!est.ajuste) { mostrarToast('Escribe un ajuste, por ejemplo +10%', true); return; }
+  if (!est.enRango.length) return;
+
+  const previo = [];
+  let n = 0;
+  est.enRango.forEach(it => {
+    const nueva = _formulaAjustada(it.fila, est.ajuste);
+    const r     = Formula.evaluar(nueva);
+    if (!r.ok) return;
+    previo.push({ id: it.fila.id, monto: it.fila.monto, formula: it.fila.formula || '' });
+    it.fila.formula = nueva;
+    it.fila.monto   = r.valor;
+    n++;
+  });
+  if (!n) { mostrarToast('No se pudo aplicar el ajuste', true); return; }
+
+  _ultimoAjuste = { tab: TabManager.activeId, ajuste: est.ajuste, previo: previo };
+
+  renderFilas();
+  calcularTotales();
+  TabManager.marcarSinGuardar();
+  cerrarModalAjuste();
+  mostrarToast(`Ajuste ${est.ajuste} aplicado a ${n === 1 ? '1 fila' : n + ' filas'}`);
+}
+
+// Devuelve los importes al valor que tenían antes del último ajuste
+function deshacerAjuste() {
+  if (!_ultimoAjuste || _ultimoAjuste.tab !== TabManager.activeId) return;
+  let n = 0;
+  _ultimoAjuste.previo.forEach(p => {
+    const fila = cot.items.find(f => f.id === p.id);
+    if (!fila) return;
+    fila.monto   = p.monto;
+    fila.formula = p.formula;
+    n++;
+  });
+  const ajuste = _ultimoAjuste.ajuste;
+  _ultimoAjuste = null;
+  renderFilas();
+  calcularTotales();
+  TabManager.marcarSinGuardar();
+  cerrarModalAjuste();
+  mostrarToast(`Ajuste ${ajuste} deshecho en ${n === 1 ? '1 fila' : n + ' filas'}`);
 }
 
 // Sincroniza cot.items desde el DOM (antes de serializar)
@@ -1147,8 +1374,13 @@ function _syncItemsDesdeDOM() {
       const u = tr.querySelector('[data-field="unidad"]');
       if (d) fila.desc     = d.innerText;
       if (c) fila.cantidad = parseFloat(c.innerText) || 1;
-      if (m) fila.monto    = parseMonto(m.innerText);
       if (u) fila.unidad   = u.innerText.trim();
+      if (m) {
+        // La celda muestra el resultado; la fórmula vive en data-formula
+        const dm = Formula.datosCelda(m);
+        fila.monto   = dm.monto;
+        fila.formula = dm.formula;
+      }
     }
   });
 }
@@ -1168,7 +1400,7 @@ function calcularTotales() {
     if (fila.type === 'nota') return;
     const tr     = tbody.querySelector(`tr[data-id="${fila.id}"]`);
     if (!tr) return;
-    const monto  = parseMonto(tr.querySelector('[data-field="monto"]')?.innerText    || '0');
+    const monto  = Formula.valorCelda(tr.querySelector('[data-field="monto"]'));
     const cant   = parseFloat(tr.querySelector('[data-field="cantidad"]')?.innerText || '1') || 1;
     const total  = monto * cant;
     if (fila.tipo === 'gravado') gravado += total; else excento += total;
@@ -1750,6 +1982,8 @@ async function exportarHTML() {
   const scriptInline = `(function(){
   var ITBIS=${itbisPct};
   var MARCA=${JSON.stringify(_marcaArchivo())};
+  // Mismo motor de fórmulas del editor — ver js/formula.js
+  var Formula=${Formula.fuente()};
   function pM(s){return parseFloat(String(s).replace(/[\s,]/g,''))||0;}
   function fN(n){return Number(n).toLocaleString('es-DO',{minimumFractionDigits:2,maximumFractionDigits:2});}
   function sT(id,v){var el=document.getElementById(id);if(el)el.textContent=v;}
@@ -1758,7 +1992,7 @@ async function exportarHTML() {
     var tasa=pM(document.getElementById('doc-tasa')?.innerText||'60.65')||60.65;
     var ex=0,gr=0;
     document.querySelectorAll('#tabla-body tr[data-tipo]').forEach(function(tr){
-      var monto=pM((tr.querySelector('[data-field="monto"]')||{}).innerText||'0');
+      var monto=Formula.valorCelda(tr.querySelector('[data-field="monto"]'));
       var cant=parseFloat((tr.querySelector('[data-field="cantidad"]')||{}).innerText||'1')||1;
       var tot=monto*cant;
       if(tr.dataset.tipo==='gravado') gr+=tot; else ex+=tot;
@@ -1777,8 +2011,12 @@ async function exportarHTML() {
     var num=document.getElementById('doc-numero')?.textContent||'cotizacion';
     var t=document.title;document.title=MARCA+'-'+num.trim();window.print();document.title=t;
   };
-  document.querySelectorAll('[data-field="monto"],[data-field="cantidad"]').forEach(function(el){
+  document.querySelectorAll('[data-field="cantidad"]').forEach(function(el){
     el.addEventListener('input',window.calcTotales);
+  });
+  // Los importes aceptan fórmulas también en el archivo exportado
+  document.querySelectorAll('[data-field="monto"]').forEach(function(el){
+    Formula.engancharCelda(el,{alCambiar:window.calcTotales});
   });
   document.querySelectorAll('.sel-tipo-item').forEach(function(sel){
     sel.addEventListener('change',function(){this.closest('tr').dataset.tipo=this.value;window.calcTotales();});

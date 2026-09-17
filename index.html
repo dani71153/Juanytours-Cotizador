@@ -4,9 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Cotizador — Juanytours</title>
-  <link rel="stylesheet" href="css/estilos.css?v=16" />
-  <link rel="stylesheet" href="css/biblioteca.css?v=16" />
-  <link rel="stylesheet" href="css/plantilla-laps.css?v=16" />
+  <link rel="stylesheet" href="css/estilos.css?v=17" />
+  <link rel="stylesheet" href="css/biblioteca.css?v=17" />
+  <link rel="stylesheet" href="css/plantilla-laps.css?v=17" />
 </head>
 <body>
 
@@ -27,6 +27,8 @@
       <button class="btn-ctrl btn-guardar"  onclick="guardarManual()">&#x1F4BE; Guardar</button>
       <button class="btn-ctrl btn-agregar"  onclick="agregarFila()">&#43; Servicio</button>
       <button class="btn-ctrl btn-nota"     onclick="agregarNota()">&#43; Nota</button>
+      <button class="btn-ctrl btn-ajustar"  onclick="abrirModalAjuste()"
+              title="Aplicar un aumento o descuento a los importes, desde la fila que elijas">&#37; Ajustar</button>
       <button class="btn-ctrl btn-tasa"     onclick="TasaCambio.mostrarEditor()">&#x1F4B1; Tasa</button>
       <button class="btn-ctrl btn-opciones" onclick="abrirModalOpciones()">&#x2699; Opciones</button>
       <button class="btn-ctrl btn-vista" id="btn-vista" onclick="toggleVistaImpresion()">&#x1F441; Vista final</button>
@@ -147,6 +149,74 @@
       <div class="modal-footer">
         <button class="btn-modal-cancelar" onclick="TasaCambio.cerrarEditor()">Cancelar</button>
         <button class="btn-modal-ok"       onclick="TasaCambio.confirmarEditor()">Aplicar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== MODAL AJUSTAR IMPORTES ===== -->
+  <!-- Aplica un mismo ajuste (+10%, *1.18, +250…) a los importes de un
+       rango de filas. Cada importe queda como fórmula editable. -->
+  <div id="modal-ajuste" class="modal-overlay no-print"
+       onclick="if(event.target===this) cerrarModalAjuste()">
+    <div class="modal-card modal-ajuste-card">
+      <div class="modal-header">
+        <span>&#37; Ajustar importes</span>
+        <button class="modal-cerrar" onclick="cerrarModalAjuste()">&#215;</button>
+      </div>
+      <div class="modal-body">
+        <div class="aj-seccion">
+          <p class="modal-desc">
+            Se aplica el mismo ajuste a los importes de las filas que elijas.
+            El importe queda guardado como fórmula, así que después se puede
+            revisar o corregir en la celda.
+          </p>
+
+          <div class="aj-fila-campo">
+            <label class="aj-etq" for="inp-ajuste">Ajuste</label>
+            <input type="text" id="inp-ajuste" class="aj-inp" placeholder="+10%"
+                   autocomplete="off" spellcheck="false"
+                   onkeydown="if(event.key==='Enter') aplicarAjuste()" />
+          </div>
+          <div class="aj-chips">
+            <button class="aj-chip" onclick="ponerAjuste('+10%')">+10%</button>
+            <button class="aj-chip" onclick="ponerAjuste('-10%')">&#8722;10%</button>
+            <button class="aj-chip" onclick="ponerAjuste('+18%')">+18%</button>
+            <button class="aj-chip" onclick="ponerAjuste('*1.18')">&#215;1.18</button>
+            <button class="aj-chip" onclick="ponerAjuste('+500')">+500</button>
+          </div>
+          <p class="aj-ayuda">
+            Sirve <code>+10%</code>, <code>-5%</code>, <code>*1.18</code>,
+            <code>/2</code> o <code>+250</code>. Sin signo se entiende que suma.
+          </p>
+
+          <div class="aj-rango">
+            <div class="aj-fila-campo">
+              <label class="aj-etq" for="sel-ajuste-desde">Desde la fila</label>
+              <select id="sel-ajuste-desde" class="aj-sel" onchange="previsualizarAjuste()"></select>
+            </div>
+            <div class="aj-fila-campo">
+              <label class="aj-etq" for="sel-ajuste-hasta">Hasta la fila</label>
+              <select id="sel-ajuste-hasta" class="aj-sel" onchange="previsualizarAjuste()"></select>
+            </div>
+          </div>
+        </div>
+
+        <div class="tasa-divisor"></div>
+
+        <div class="aj-seccion aj-preview-wrap">
+          <div class="aj-preview-titulo">
+            <span>Vista previa</span>
+            <span class="aj-preview-conteo" id="aj-conteo"></span>
+          </div>
+          <div id="aj-preview" class="aj-preview"></div>
+          <div id="aj-total" class="aj-total"></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-modal-cancelar aj-deshacer" id="btn-deshacer-ajuste"
+                onclick="deshacerAjuste()" style="display:none">&#8630; Deshacer</button>
+        <button class="btn-modal-cancelar" onclick="cerrarModalAjuste()">Cancelar</button>
+        <button class="btn-modal-ok" id="btn-aplicar-ajuste" onclick="aplicarAjuste()">Aplicar</button>
       </div>
     </div>
   </div>
@@ -422,13 +492,14 @@
   <!-- ===== TOAST DE GUARDADO ===== -->
   <div id="toast-guardado" class="toast-guardado no-print" style="display:none">&#x2713; Guardado</div>
 
-  <script src="data/empresa.js?v=16"></script>
-  <script src="shared/tasa.js?v=16"></script>
-  <script src="database/db.js?v=16"></script>
-  <script src="database/cotizaciones.js?v=16"></script>
-  <script src="permanencia/sesion.js?v=16"></script>
-  <script src="permanencia/borrador.js?v=16"></script>
-  <script src="js/plantilla.js?v=16"></script>
-  <script src="js/app.js?v=16"></script>
+  <script src="data/empresa.js?v=17"></script>
+  <script src="shared/tasa.js?v=17"></script>
+  <script src="database/db.js?v=17"></script>
+  <script src="database/cotizaciones.js?v=17"></script>
+  <script src="permanencia/sesion.js?v=17"></script>
+  <script src="permanencia/borrador.js?v=17"></script>
+  <script src="js/formula.js?v=17"></script>
+  <script src="js/plantilla.js?v=17"></script>
+  <script src="js/app.js?v=17"></script>
 </body>
 </html>

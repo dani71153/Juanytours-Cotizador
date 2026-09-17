@@ -39,6 +39,8 @@ Juanytours- Cotizador/
 │   ├── sesion.js              # Persistencia de pestañas abiertas (Sesion)
 │   └── borrador.js            # Autoguardado continuo del editor (Borrador)
 ├── js/
+│   ├── formula.js             # Evaluador de fórmulas de la columna de importes (Formula)
+│   ├── plantilla.js           # Markup del documento (Plantilla)
 │   └── app.js                 # Lógica principal, TabManager, Biblioteca
 └── css/
     ├── estilos.css            # Estilos del documento/editor
@@ -204,13 +206,80 @@ Panel principal de la app. Muestra todas las cotizaciones guardadas ordenadas po
 | `eliminarFila(id)` | Elimina; protege contra eliminar el último ítem |
 | `moverFila(id, dir)` | Sube o baja una fila (reordena `cot.items`) |
 | `renderFilas()` | Regenera el `<tbody>` completo desde `cot.items`; agrega filas decorativas si hay menos de 3 ítems |
-| `actualizarFila(id, campo, valor)` | Parsea y guarda un campo editado en el objeto de la fila |
+| `actualizarFila(id, campo, valor)` | Parsea y guarda un campo editado en el objeto de la fila; en `monto` acepta fórmulas (ver `js/formula.js`) |
 | `cambiarTipo(id, tipo)` | Alterna exento/gravado de un ítem y recalcula |
 | `_syncItemsDesdeDOM()` | Lee el DOM y actualiza `cot.items` antes de serializar (para capturar ediciones en curso) |
 
+#### 7.8.1 Fórmulas en la Columna de Importes (`js/formula.js` — `Formula`)
+
+La celda de importe acepta expresiones aritméticas, no sólo números. Se evalúan con un
+parser propio (descenso recursivo, **sin `eval()`**).
+
+| Se escribe | Resultado | Para qué |
+|---|---|---|
+| `1500+1500*10%` | `1,650.00` | precio viejo + porciento de aumento |
+| `1500+10%` | `1,650.00` | igual, en corto: un `%` suelto se aplica sobre lo acumulado a su izquierda |
+| `1500+1500(10%)` | `1,650.00` | multiplicación implícita |
+| `1500-10%` | `1,350.00` | descuento |
+| `(120+30)*2` | `300.00` | agrupación |
+| `1,250.50 x 3` | `3,751.50` | la coma es separador de miles; `x` y `×` valen por `*` |
+| `2500/2` | `1,250.00` | división |
+
+Comportamiento tipo hoja de cálculo:
+
+- La celda **muestra el resultado** ya formateado; la fórmula tal como se escribió queda
+  guardada en `data-formula` y en `fila.formula`.
+- Al **enfocar** la celda reaparece la fórmula para poder corregirla; al salir (o con
+  `Enter`) vuelve el resultado. `Escape` descarta lo escrito.
+- Mientras se escribe, un globito muestra el resultado en vivo (`= 1,650.00`) o el error.
+- Un triangulito en la esquina marca las celdas con fórmula. Es marca de editor:
+  **no sale en la vista final ni impresa**.
+- Una fórmula inválida se pinta en rojo, se muestra tal cual y suma `0` — el error salta
+  a la vista en lugar de imprimir un `0.00` mudo.
+- Las fórmulas **se guardan** con la cotización y **sobreviven al HTML exportado**, donde
+  se siguen pudiendo editar (el export incrusta este mismo módulo vía `Formula.fuente()`).
+
+| Función | Qué hace |
+|---|---|
+| `Formula.evaluar(texto)` | `{ ok, valor, esFormula, error }` |
+| `Formula.esFormula(texto)` | `true` si no es un número pelado |
+| `Formula.valorCelda(cel)` | Número vigente de una celda (respeta la edición en curso) |
+| `Formula.datosCelda(cel)` | `{ monto, formula }` para serializar |
+| `Formula.engancharCelda(cel, opts)` | Instala el comportamiento de hoja de cálculo |
+| `Formula.attrsCelda(fila)` | Atributos `data-formula`/`title` al renderizar |
+| `Formula.fuente()` | Código del módulo, para incrustarlo en el HTML exportado |
+
+#### 7.8.2 Ajuste de Importes por Rango de Filas
+
+Botón **`% Ajustar`** de la barra (modal `#modal-ajuste`). Aplica un mismo ajuste a los
+importes de las filas elegidas — un aumento a media cotización sin tocar celda por celda.
+
+- **Ajuste**: `+10%`, `-5%`, `*1.18`, `/2`, `+250`. Sin signo delante se entiende que suma.
+  Hay chips con los ajustes más usados.
+- **Desde / hasta la fila**: dos selectores con las filas numeradas como en la tabla (las
+  notas no cuentan; las filas ocultas se marcan `· oculta`). Si el rango va al revés, se endereza.
+- **Vista previa**: cada fila afectada con su `viejo → nuevo`, más la suma de las filas
+  afectadas (importe × cantidad) antes y después. `Aplicar` sólo se habilita si el ajuste es válido.
+- El resultado queda como **fórmula editable** (`1500+10%`), no como número pelado, así que el
+  precio anterior sigue a la vista en la celda. Si el importe ya tenía fórmula, se envuelve en
+  paréntesis: `(800+200)*1.18`.
+- **Deshacer**: el botón aparece en el modal tras aplicar y devuelve los importes al valor previo
+  (sólo para la pestaña donde se aplicó).
+
+| Función | Qué hace |
+|---|---|
+| `abrirModalAjuste()` / `cerrarModalAjuste()` | Abre y cierra el modal; al abrir sincroniza desde el DOM y llena los selectores |
+| `ponerAjuste(txt)` | Rellena el campo desde un chip |
+| `previsualizarAjuste()` | Recalcula la vista previa, el conteo y el estado del botón Aplicar |
+| `aplicarAjuste()` | Escribe las fórmulas nuevas, guarda el snapshot para deshacer y avisa por toast |
+| `deshacerAjuste()` | Restaura los importes del último ajuste |
+| `_itemsConNumero()` | Ítems con el número de fila visible (ignora notas) |
+| `_normalizarAjuste(txt)` | Agrega el `+` implícito |
+| `_formulaAjustada(fila, ajuste)` | Arma la fórmula nueva envolviendo la vieja si hacía falta |
+
 #### 7.9 Cálculo de Totales (`calcularTotales`)
 
-Lee cantidad y monto de cada fila del DOM, separa exentos y gravados, aplica ITBIS al subtotal gravado, muestra Total DOP y convierte a USD usando la tasa activa. Se llama cada vez que hay un cambio en montos, cantidades o tasa.
+Lee cantidad y monto de cada fila del DOM (el monto vía `Formula.valorCelda`, por si es una fórmula), separa exentos y gravados, aplica ITBIS al subtotal gravado, muestra Total DOP y convierte a USD usando la tasa activa. Se llama cada vez que hay un cambio en montos, cantidades o tasa.
 
 #### 7.10 Tipo de Documento (`cambiarTipoDoc`)
 
@@ -244,11 +313,12 @@ Registra eventos sobre: cambio de tipo de documento, edición directa de la tasa
 
 | Sección | Descripción |
 |---|---|
-| **Barra de Control** (`#barra-control`) | Logo + nombre del sistema. Muestra acciones contextuales: en vista Biblioteca → botón "Nueva Cotización"; en vista Editor → Guardar, + Servicio, + Nota, Tasa, PDF |
+| **Barra de Control** (`#barra-control`) | Logo + nombre del sistema. Muestra acciones contextuales: en vista Biblioteca → botón "Nueva Cotización"; en vista Editor → Guardar, + Servicio, + Nota, % Ajustar, Tasa, Opciones, Vista final, Exportar |
 | **Tab Bar** (`#tab-bar`) | Barra de pestañas generada por `TabManager.renderTabs()`. La primera pestaña siempre es "Biblioteca". |
 | **Panel Biblioteca** (`#panel-biblioteca`) | Vista principal al abrir la app. Encabezado con contador, botones de importar/exportar respaldo, buscador y lista de cotizaciones. |
 | **Documento / Editor** (`#documento`) | El documento imprimible: encabezado con logo y datos de empresa, sección cliente, tabla de servicios, bloque de totales con tasa de cambio, sección de pago con cuentas bancarias. |
 | **Modal Tasa de Cambio** (`#modal-tasa`) | Permite ingresar la tasa oficial del Banco Central (referencia) y elegir entre usarla o definir una tasa fija para el documento. |
+| **Modal Ajustar Importes** (`#modal-ajuste`) | Aplica un aumento o descuento a los importes de un rango de filas, con vista previa y deshacer (ver 7.8.2). |
 | **Toast de Guardado** (`#toast-guardado`) | Notificación flotante de confirmación, oculta por defecto. |
 
 ---

@@ -1036,6 +1036,13 @@ body.vista-impresion .td-monto.formula-error { background: none !important; colo
 .aj-t-viejo  { text-align: right; color: #8A98A8; white-space: nowrap; }
 .aj-t-flecha { width: 16px; text-align: center; color: #A8B4C2; }
 .aj-t-nuevo  { text-align: right; font-weight: bold; color: #1A6B3C; white-space: nowrap; }
+.aj-t-fx {
+  color: var(--azul, #0052A5);
+  font-weight: bold;
+  font-size: 12px;
+  cursor: help;
+}
+
 .aj-t-oculta .aj-t-desc::after {
   content: ' · oculta';
   color: #B0BCC8;
@@ -1065,6 +1072,117 @@ body.vista-impresion .td-monto.formula-error { background: none !important; colo
 .aj-error { color: #991B1B; }
 
 .aj-deshacer { margin-right: auto; }
+
+/* =============================================
+   DETECTOR DE IMPORTES CON FÓRMULA
+   Aviso en la barra (solo si el documento tiene fórmulas) y
+   listado para revisarlas de un golpe.
+   ============================================= */
+.chip-formulas {
+  display: none;               /* lo enciende actualizarAvisoFormulas() */
+  align-items: center;
+  gap: 5px;
+  padding: 5px 12px;
+  border: 1px solid rgba(255, 255, 255, .35);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, .12);
+  color: #fff;
+  font-family: var(--fuente);
+  font-size: 12px;
+  font-weight: bold;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background .15s;
+}
+.chip-formulas:hover { background: rgba(255, 255, 255, .24); }
+.chip-formulas-error {
+  background: #8B0000;
+  border-color: #C25B5B;
+  animation: fxLatido 1.6s ease-in-out infinite;
+}
+@keyframes fxLatido {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: .62; }
+}
+
+.modal-formulas-card {
+  width: 600px;
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+}
+.modal-formulas-card .modal-header,
+.modal-formulas-card .modal-footer { flex-shrink: 0; }
+.modal-formulas-card .modal-body   { flex: 1; overflow-y: auto; }
+
+.fx-resumen-error { color: #991B1B !important; font-weight: bold; }
+
+.fx-lista {
+  border: 1px solid #E2E8F0;
+  border-radius: 6px;
+  background: #FAFCFE;
+  overflow: hidden;
+}
+
+.fx-fila {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) auto auto 46px;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  border-bottom: 1px solid #EDF1F6;
+  font-size: 12.5px;
+}
+.fx-fila:last-child { border-bottom: none; }
+.fx-fila-error { background: #FEF2F2; }
+
+.fx-num  { color: #8A98A8; text-align: right; font-size: 11.5px; }
+.fx-desc {
+  color: #33475B;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fx-desc em { color: #B0BCC8; font-size: 11px; }
+
+.fx-formula {
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 12px;
+  background: #EEF2F7;
+  border: 1px solid #DDE5EF;
+  border-radius: 3px;
+  padding: 2px 6px;
+  color: #1F3A5F;
+  white-space: nowrap;
+}
+.fx-fila-error .fx-formula { background: #FEE2E2; border-color: #FCA5A5; color: #991B1B; }
+
+.fx-valor {
+  font-weight: bold;
+  color: #1A6B3C;
+  white-space: nowrap;
+  text-align: right;
+}
+.fx-fila-error .fx-valor { color: #991B1B; font-weight: normal; font-size: 11.5px; }
+
+.fx-ver {
+  padding: 3px 9px;
+  border: 1px solid #C8D2DE;
+  border-radius: 4px;
+  background: #fff;
+  color: #33475B;
+  font-family: var(--fuente);
+  font-size: 11.5px;
+  cursor: pointer;
+}
+.fx-ver:hover { background: var(--azul); border-color: var(--azul); color: #fff; }
+
+/* Resalta la fila a la que se salta desde el listado */
+.fila-resaltada td { animation: fxResalte 2.2s ease-out; }
+@keyframes fxResalte {
+  0%, 35% { background: #FFF3B0; }
+  100%    { background: transparent; }
+}
 
 /* ── Indicador de tasa en el documento ── */
 .tasa-indicador {

@@ -1199,6 +1199,8 @@ function renderFilas() {
     tbody.appendChild(tr);
   });
 
+  actualizarAvisoFormulas();
+
   // Filas vacías decorativas
   const total = cot.items.filter(f => f.type === 'item').length;
   for (let x = total; x < 3; x++) {
@@ -1384,9 +1386,14 @@ function previsualizarAjuste() {
     nuevoTot += nuevo * cant;
     const d = (it.fila.desc || '').replace(/\s+/g, ' ').trim();
     const t = d ? (d.length > 26 ? d.slice(0, 26) + '…' : d) : '(sin descripción)';
+    // Marca las que ya traían fórmula: el ajuste se aplica sobre el
+    // total de la celda, envolviéndola en paréntesis.
+    const marca = it.fila.formula
+      ? ` <span class="aj-t-fx" title="Ya tiene fórmula: ${escHTML(it.fila.formula)} → quedará ${escHTML(nueva)}">&fnof;</span>`
+      : '';
     return `<tr${it.fila.visible === false ? ' class="aj-t-oculta"' : ''}>
       <td class="aj-t-num">${it.num}</td>
-      <td class="aj-t-desc" title="${escHTML(d)}">${escHTML(t)}</td>
+      <td class="aj-t-desc" title="${escHTML(d)}">${escHTML(t)}${marca}</td>
       <td class="aj-t-viejo">${formatNum(viejo)}</td>
       <td class="aj-t-flecha">&#8594;</td>
       <td class="aj-t-nuevo">${formatNum(nuevo)}</td>
@@ -1511,6 +1518,115 @@ function calcularTotales() {
   setText('tot-suma',     formatNum(gravado + itbs));
   setHTML('tot-dop', '<strong>' + formatNum(totalDOP) + '</strong>');
   setHTML('tot-usd', '<strong>' + formatNum(totalUSD) + '</strong>');
+
+  actualizarAvisoFormulas();
+}
+
+// =============================================
+//  DETECTOR DE IMPORTES CON FÓRMULA
+//
+//  El triangulito de la celda es discreto a propósito (no se
+//  imprime), pero revisando una cotización hace falta saber de un
+//  golpe qué importes salieron de una fórmula y si alguna quedó mal
+//  escrita. El aviso de la barra se recalcula solo en cada cambio,
+//  desde calcularTotales().
+// =============================================
+
+// Filas con fórmula, con el número que se ve en la tabla
+function _filasConFormula() {
+  const lista = [];
+  let n = 0;
+  cot.items.forEach(f => {
+    if (f.type !== 'item') return;
+    n++;
+    if (!f.formula) return;
+    const r = Formula.evaluar(f.formula);
+    lista.push({
+      num: n, id: f.id, desc: f.desc || '', cantidad: f.cantidad || 1,
+      formula: f.formula, valor: r.ok ? r.valor : 0,
+      ok: r.ok, error: r.error || '', oculta: f.visible === false
+    });
+  });
+  return lista;
+}
+
+function actualizarAvisoFormulas() {
+  const chip = document.getElementById('chip-formulas');
+  if (!chip) return;
+
+  const lista = _filasConFormula();
+  const malas = lista.filter(f => !f.ok).length;
+
+  if (!lista.length) {                 // sin fórmulas, el aviso no estorba
+    chip.style.display = 'none';
+    return;
+  }
+  chip.style.display = 'inline-flex';
+  chip.classList.toggle('chip-formulas-error', malas > 0);
+  chip.innerHTML = malas
+    ? `&fnof; ${lista.length} &middot; ${malas} con error`
+    : `&fnof; ${lista.length} con f&oacute;rmula`;
+  chip.title = malas
+    ? `${malas} fórmula${malas > 1 ? 's' : ''} mal escrita${malas > 1 ? 's' : ''}. Clic para revisarlas.`
+    : `${lista.length} importe${lista.length > 1 ? 's' : ''} calculado${lista.length > 1 ? 's' : ''} con fórmula. Clic para verlas.`;
+}
+
+function abrirModalFormulas() {
+  const modal = document.getElementById('modal-formulas');
+  if (!modal) return;
+  _syncItemsDesdeDOM();
+  renderModalFormulas();
+  modal.classList.add('visible');
+}
+
+function cerrarModalFormulas() {
+  document.getElementById('modal-formulas')?.classList.remove('visible');
+}
+
+function renderModalFormulas() {
+  const cont = document.getElementById('fx-lista');
+  const res  = document.getElementById('fx-resumen');
+  if (!cont) return;
+
+  const lista = _filasConFormula();
+  const malas = lista.filter(f => !f.ok).length;
+
+  if (res) {
+    res.textContent = !lista.length
+      ? 'Ningún importe usa fórmulas.'
+      : `${lista.length} de ${cot.items.filter(f => f.type === 'item').length} importes salen de una fórmula`
+        + (malas ? ` · ${malas} con error` : '');
+    res.classList.toggle('fx-resumen-error', malas > 0);
+  }
+
+  if (!lista.length) {
+    cont.innerHTML = '<p class="aj-vacio">Todos los importes están escritos como números.</p>';
+    return;
+  }
+
+  cont.innerHTML = lista.map(f => {
+    const d = f.desc.replace(/\s+/g, ' ').trim();
+    const t = d ? (d.length > 30 ? d.slice(0, 30) + '…' : d) : '(sin descripción)';
+    return `<div class="fx-fila${f.ok ? '' : ' fx-fila-error'}">
+      <span class="fx-num">${f.num}</span>
+      <span class="fx-desc" title="${escHTML(d)}">${escHTML(t)}${f.oculta ? ' <em>· oculta</em>' : ''}</span>
+      <code class="fx-formula">${escHTML(f.formula)}</code>
+      <span class="fx-valor">${f.ok ? '= ' + formatNum(f.valor) : '&#9888; ' + escHTML(f.error)}</span>
+      <button class="fx-ver" onclick="irAFila(${f.id})" title="Ver esta fila en el documento">Ver</button>
+    </div>`;
+  }).join('');
+}
+
+// Cierra el modal, lleva la fila a la vista y la resalta un momento
+function irAFila(id) {
+  cerrarModalFormulas();
+  const tr = document.querySelector(`#tabla-body tr[data-id="${id}"]`);
+  if (!tr) return;
+  tr.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  tr.classList.remove('fila-resaltada');
+  void tr.offsetWidth;                 // reinicia la animación
+  tr.classList.add('fila-resaltada');
+  setTimeout(() => tr.classList.remove('fila-resaltada'), 2200);
 }
 
 // =============================================

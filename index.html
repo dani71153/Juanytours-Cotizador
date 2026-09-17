@@ -4,9 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Cotizador — Juanytours</title>
-  <link rel="stylesheet" href="css/estilos.css?v=19" />
-  <link rel="stylesheet" href="css/biblioteca.css?v=19" />
-  <link rel="stylesheet" href="css/plantilla-laps.css?v=19" />
+  <link rel="stylesheet" href="css/estilos.css?v=20" />
+  <link rel="stylesheet" href="css/biblioteca.css?v=20" />
+  <link rel="stylesheet" href="css/plantilla-laps.css?v=20" />
 </head>
 <body>
 
@@ -29,6 +29,9 @@
       <button class="btn-ctrl btn-nota"     onclick="agregarNota()">&#43; Nota</button>
       <button class="btn-ctrl btn-ajustar"  onclick="abrirModalAjuste()"
               title="Aplicar un aumento o descuento a los importes, desde la fila que elijas">&#37; Ajustar</button>
+      <!-- Aparece solo si el documento tiene importes con fórmula -->
+      <button class="chip-formulas" id="chip-formulas" style="display:none"
+              onclick="abrirModalFormulas()"></button>
       <button class="btn-ctrl btn-tasa"     onclick="TasaCambio.mostrarEditor()">&#x1F4B1; Tasa</button>
       <button class="btn-ctrl btn-opciones" onclick="abrirModalOpciones()">&#x2699; Opciones</button>
       <button class="btn-ctrl btn-vista" id="btn-vista" onclick="toggleVistaImpresion()">&#x1F441; Vista final</button>
@@ -217,6 +220,28 @@
                 onclick="deshacerAjuste()" style="display:none">&#8630; Deshacer</button>
         <button class="btn-modal-cancelar" onclick="cerrarModalAjuste()">Cancelar</button>
         <button class="btn-modal-ok" id="btn-aplicar-ajuste" onclick="aplicarAjuste()">Aplicar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== MODAL IMPORTES CON FÓRMULA ===== -->
+  <!-- Lista las filas cuyo importe sale de una fórmula, con su
+       resultado, y marca en rojo las que están mal escritas. -->
+  <div id="modal-formulas" class="modal-overlay no-print"
+       onclick="if(event.target===this) cerrarModalFormulas()">
+    <div class="modal-card modal-formulas-card">
+      <div class="modal-header">
+        <span>&fnof; Importes con f&oacute;rmula</span>
+        <button class="modal-cerrar" onclick="cerrarModalFormulas()">&#215;</button>
+      </div>
+      <div class="modal-body">
+        <div class="aj-seccion">
+          <p class="modal-desc" id="fx-resumen"></p>
+          <div id="fx-lista" class="fx-lista"></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-modal-ok" onclick="cerrarModalFormulas()">Cerrar</button>
       </div>
     </div>
   </div>
@@ -493,14 +518,14 @@
   <!-- ===== TOAST DE GUARDADO ===== -->
   <div id="toast-guardado" class="toast-guardado no-print" style="display:none">&#x2713; Guardado</div>
 
-  <script src="data/empresa.js?v=19"></script>
-  <script src="shared/tasa.js?v=19"></script>
-  <script src="database/db.js?v=19"></script>
-  <script src="database/cotizaciones.js?v=19"></script>
-  <script src="permanencia/sesion.js?v=19"></script>
-  <script src="permanencia/borrador.js?v=19"></script>
-  <script src="js/formula.js?v=19"></script>
-  <script src="js/plantilla.js?v=19"></script>
-  <script src="js/app.js?v=19"></script>
+  <script src="data/empresa.js?v=20"></script>
+  <script src="shared/tasa.js?v=20"></script>
+  <script src="database/db.js?v=20"></script>
+  <script src="database/cotizaciones.js?v=20"></script>
+  <script src="permanencia/sesion.js?v=20"></script>
+  <script src="permanencia/borrador.js?v=20"></script>
+  <script src="js/formula.js?v=20"></script>
+  <script src="js/plantilla.js?v=20"></script>
+  <script src="js/app.js?v=20"></script>
 </body>
 </html>

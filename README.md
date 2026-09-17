@@ -288,6 +288,36 @@ Comportamiento tipo hoja de cálculo:
 | `Formula.attrsCelda(fila)` | Atributos `data-formula`/`title` al renderizar |
 | `Formula.fuente()` | Código del módulo, para incrustarlo en el HTML exportado |
 
+#### 7.8.3 Detector de Importes con Fórmula
+
+El triangulito de la celda es discreto a propósito (no se imprime), pero al revisar una
+cotización hace falta saber **de un golpe** qué importes salieron de una fórmula y si alguna
+quedó mal escrita.
+
+En la barra aparece un aviso **solo cuando el documento tiene fórmulas**:
+
+- `ƒ 3 con fórmula` — cuántos importes se calcularon.
+- `ƒ 5 · 1 con error` en rojo y latiendo — hay fórmulas inválidas (suman `0`).
+
+Al pulsarlo se abre el listado (`#modal-formulas`): nº de fila, descripción, la fórmula tal
+cual, su resultado, y un botón **Ver** que cierra el modal, lleva la fila a la vista y la
+resalta un par de segundos. Las inválidas salen en rojo con el motivo.
+
+Se recalcula solo: `actualizarAvisoFormulas()` se llama al final de `calcularTotales()` y de
+`renderFilas()`, así que el aviso sigue al documento mientras se escribe, al aplicar un
+ajuste en lote, al corregir una fórmula o al abrir una cotización guardada.
+
+La vista previa del ajuste en lote (7.8.2) marca además con `ƒ` las filas que **ya** traían
+fórmula, y el tooltip dice en qué se convertirá — `800+1200` → `(800+1200)+15%`.
+
+| Función | Qué hace |
+|---|---|
+| `_filasConFormula()` | Filas con fórmula, con su nº visible, resultado y si es válida |
+| `actualizarAvisoFormulas()` | Enciende, apaga y redacta el aviso de la barra |
+| `abrirModalFormulas()` / `cerrarModalFormulas()` | Abren y cierran el listado |
+| `renderModalFormulas()` | Pinta el listado y el resumen |
+| `irAFila(id)` | Cierra el modal, hace scroll a la fila y la resalta |
+
 #### 7.8.2 Ajuste de Importes por Rango de Filas
 
 Botón **`% Ajustar`** de la barra (modal `#modal-ajuste`). Aplica un mismo ajuste a los
@@ -408,6 +438,7 @@ Registra eventos sobre: cambio de tipo de documento, edición directa de la tasa
 | **Documento / Editor** (`#documento`) | El documento imprimible: encabezado con logo y datos de empresa, sección cliente, tabla de servicios, bloque de totales con tasa de cambio, sección de pago con cuentas bancarias. |
 | **Modal Tasa de Cambio** (`#modal-tasa`) | Permite ingresar la tasa oficial del Banco Central (referencia) y elegir entre usarla o definir una tasa fija para el documento. |
 | **Modal Ajustar Importes** (`#modal-ajuste`) | Aplica un aumento o descuento a los importes de un rango de filas, con vista previa y deshacer (ver 7.8.2). |
+| **Modal Importes con Fórmula** (`#modal-formulas`) | Listado de las filas cuyo importe sale de una fórmula, con su resultado y las inválidas en rojo (ver 7.8.3). Se abre desde el aviso `ƒ` de la barra. |
 | **Toast de Guardado** (`#toast-guardado`) | Notificación flotante de confirmación, oculta por defecto. |
 
 ---

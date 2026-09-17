@@ -336,6 +336,26 @@ const EmpresaCfg = {
     });
   },
 
+  // Cambia un solo campo y lo persiste. Lo usa la sincronización
+  // bidireccional del vendedor: lo que se escribe en el documento
+  // pasa a ser el defecto de la empresa.
+  fijar(sec, key, valor) {
+    const E   = window.EMPRESA || {};
+    const val = String(valor == null ? '' : valor).trim();
+    E[sec] = E[sec] || {};
+    E[sec][key] = val === '' ? (this.base(sec, key) ?? '') : val;
+    try {
+      const todo = this.leerTodo();
+      const id   = Perfiles.activoId();
+      const cfg  = todo[id] || {};
+      cfg[sec] = cfg[sec] || {};
+      if (val === '') delete cfg[sec][key];   // vacío = sin override
+      else            cfg[sec][key] = val;
+      todo[id] = cfg;
+      localStorage.setItem(this.KEY, JSON.stringify(todo));
+    } catch (e) { console.warn('[EmpresaCfg] No se pudo guardar:', e); }
+  },
+
   // Vuelca los valores actuales en los inputs del modal
   poblarInputs() {
     const E = window.EMPRESA || {};
@@ -1269,6 +1289,9 @@ function _leerAjuste() {
 
 // Snapshot del último ajuste para poder deshacerlo
 let _ultimoAjuste = null;
+// Lo último que se escribió en el modal, para no volver a teclearlo
+// al reabrirlo (p. ej. aplicar el mismo % a otro grupo de filas)
+let _ajusteMemoria = { ajuste: '', desde: null, hasta: null };
 
 function abrirModalAjuste() {
   const modal = document.getElementById('modal-ajuste');
@@ -1277,7 +1300,12 @@ function abrirModalAjuste() {
   _llenarSelectsAjuste();
   modal.classList.add('visible');
   const inp = document.getElementById('inp-ajuste');
-  if (inp) { inp.oninput = previsualizarAjuste; inp.focus(); inp.select(); }
+  if (inp) {
+    inp.oninput = previsualizarAjuste;
+    inp.value   = _ajusteMemoria.ajuste || '';
+    inp.focus();
+    inp.select();
+  }
   previsualizarAjuste();
 }
 
@@ -1308,7 +1336,13 @@ function _llenarSelectsAjuste() {
 
   selDesde.innerHTML = opts;
   selHasta.innerHTML = opts;
-  if (items.length) { selDesde.value = 1; selHasta.value = items.length; }
+  if (!items.length) return;
+
+  // Se recupera el rango de la vez anterior si las filas siguen
+  // existiendo; si no, todo el documento.
+  const enRango = n => Number.isInteger(n) && n >= 1 && n <= items.length;
+  selDesde.value = enRango(_ajusteMemoria.desde) ? _ajusteMemoria.desde : 1;
+  selHasta.value = enRango(_ajusteMemoria.hasta) ? _ajusteMemoria.hasta : items.length;
 }
 
 function previsualizarAjuste() {
@@ -1326,6 +1360,8 @@ function previsualizarAjuste() {
 
   const total = document.getElementById('aj-total');
   const est   = _leerAjuste();
+  _ajusteMemoria = { ajuste: document.getElementById('inp-ajuste')?.value || '',
+                     desde: est.desde, hasta: est.hasta };
   const aplicable = !est.error && est.ajuste && est.enRango.length > 0;
   if (btnOk) btnOk.disabled = !aplicable;
   if (conteo) conteo.textContent = aplicable
@@ -1892,6 +1928,25 @@ function iniciarListenersDocumento() {
   document.getElementById('doc-vencimiento')?.addEventListener('change', () => {
     TabManager.marcarSinGuardar();
   });
+
+  // El vendedor va en los dos sentidos: lo que se escribe en el
+  // documento pasa a ser el defecto de la empresa (Opciones → Empresa
+  // y banco) y al contrario. Sólo se sincroniza si de verdad cambió,
+  // para que abrir una cotización vieja y pasar por el campo sin
+  // editarlo no reescriba el defecto con un nombre antiguo.
+  const vendedor = document.getElementById('doc-vendedor');
+  if (vendedor) {
+    let alEnfocar = '';
+    vendedor.addEventListener('focus', () => { alEnfocar = vendedor.textContent.trim(); });
+    vendedor.addEventListener('blur', () => {
+      const ahora = vendedor.textContent.trim();
+      if (ahora === alEnfocar) return;
+      EmpresaCfg.fijar('defectos', 'vendedor', ahora);
+      const inp = document.getElementById('opc-emp-vendedor');
+      if (inp) inp.value = window.EMPRESA?.defectos?.vendedor || '';
+      TabManager.marcarSinGuardar();
+    });
+  }
 }
 
 // Se registran una sola vez, sobre document / window.

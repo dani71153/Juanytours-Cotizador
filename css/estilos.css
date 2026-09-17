@@ -736,8 +736,14 @@ body.vista-impresion .td-monto.formula-error { background: none !important; colo
   inset: 0;
   background: rgba(0, 0, 0, .5);
   z-index: 2000;
-  align-items: center;
+  /* flex-start + margin auto en la tarjeta: centra cuando cabe y, cuando
+     no cabe (portátiles de pantalla baja), deja desplazar en vez de
+     recortar la tarjeta por arriba y por abajo — que era lo que dejaba
+     los botones fuera del alcance. */
+  align-items: flex-start;
   justify-content: center;
+  overflow-y: auto;
+  padding: 16px;
 }
 .modal-overlay.visible { display: flex; }
 
@@ -748,6 +754,8 @@ body.vista-impresion .td-monto.formula-error { background: none !important; colo
   box-shadow: 0 8px 32px rgba(0,0,0,.28);
   overflow: hidden;
   animation: fadeUp .18s ease;
+  margin: auto;            /* centra vertical y horizontalmente si cabe */
+  flex-shrink: 0;
 }
 /* Modal más ancho para la gestión de tasa */
 .modal-tasa-card { width: 470px; }
@@ -904,7 +912,20 @@ body.vista-impresion .td-monto.formula-error { background: none !important; colo
    MODAL — AJUSTAR IMPORTES
    Aplica un ajuste (+10%, *1.18, +250…) a un rango de filas.
    ============================================= */
-.modal-ajuste-card { width: 540px; }
+/* Cabecera y pie fijos, cuerpo desplazable: el botón Aplicar sigue
+   alcanzable aunque la pantalla sea baja. */
+.modal-ajuste-card {
+  width: 540px;
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+}
+.modal-ajuste-card .modal-header,
+.modal-ajuste-card .modal-footer { flex-shrink: 0; }
+.modal-ajuste-card .modal-body {
+  flex: 1;
+  overflow-y: auto;
+}
 
 .aj-seccion { padding: 16px 22px; }
 .aj-seccion .modal-desc { margin-bottom: 14px; }
@@ -992,7 +1013,7 @@ body.vista-impresion .td-monto.formula-error { background: none !important; colo
 .aj-preview-conteo { font-weight: normal; font-size: 11.5px; color: #7A8899; }
 
 .aj-preview {
-  max-height: 210px;
+  max-height: min(210px, 26vh);
   overflow-y: auto;
   border: 1px solid #E2E8F0;
   border-radius: 6px;

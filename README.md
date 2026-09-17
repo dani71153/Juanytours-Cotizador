@@ -133,6 +133,12 @@ Guarda en `localStorage` (`jt_sesion`) qué pestañas estaban abiertas y cuál e
 | `Sesion.restaurar(tabManager)` | Al iniciar: recrea las pestañas y activa la última abierta. Si hay un borrador más reciente que el guardado en DB, lo usa y muestra aviso. Devuelve `true` si restauró algo. |
 | `Sesion.limpiar()` | Borra la sesión guardada |
 
+Si la cotización activa **nunca se guardó** (`dbId: null`), el borrador es la única copia que
+existe: antes se descartaba en ese caso y al recargar se perdía todo lo escrito — el síntoma
+era "el ajuste de importes se pierde al recargar". Ahora se aplica igual, la pestaña queda
+marcada como sin guardar, y el borrador **no** se borra tras usarlo, para que una segunda
+recarga sin guardar tampoco lo pierda.
+
 ---
 
 ### 6. `permanencia/borrador.js` — Autoguardado del Editor (`Borrador`)
@@ -179,6 +185,12 @@ Dos reglas que evitan perder datos sin darse cuenta:
   `window.PERFILES_BASE`) antes de aplicar cualquier override, porque `aplicarGuardado()`
   escribe sobre los objetos del perfil. Sin esa copia, quitar un override no podía devolver
   el valor de partida.
+
+El **vendedor es bidireccional**: al salir del campo en el documento, si el valor cambió,
+`EmpresaCfg.fijar('defectos', 'vendedor', …)` lo guarda como defecto de la empresa (y refresca
+el input de Opciones si el modal está abierto); desde Opciones viaja al documento abierto. Sólo
+se sincroniza cuando el valor **cambió** durante esa edición, para que pasar por el campo de una
+cotización vieja sin tocarlo no reescriba el defecto con un nombre antiguo.
 
 `guardarEmpresaOpciones()` actualiza además el vendedor y el texto de validez del documento
 abierto **si aún mostraban el defecto anterior** — comparando contra el valor que tenían los
@@ -292,6 +304,14 @@ importes de las filas elegidas — un aumento a media cotización sin tocar celd
   paréntesis: `(800+200)*1.18`.
 - **Deshacer**: el botón aparece en el modal tras aplicar y devuelve los importes al valor previo
   (sólo para la pestaña donde se aplicó).
+- **Recuerda lo último** (mientras no se recargue la página): al reabrir el modal vuelven el
+  ajuste y el rango de la vez anterior, así aplicar el mismo % a otro grupo de filas son dos clics.
+  Si se borraron filas, el rango se recorta a las que existen.
+- La tarjeta del modal está limitada a `88vh` con la cabecera y el pie fijos y el cuerpo
+  desplazable: en portátiles de pantalla baja el botón **Aplicar** y los selectores de rango
+  quedaban fuera de la pantalla y sin forma de desplazarse. `.modal-overlay` también desplaza
+  (`align-items: flex-start` + `margin: auto` en la tarjeta), así que ningún modal puede
+  recortarse fuera del alcance.
 
 | Función | Qué hace |
 |---|---|

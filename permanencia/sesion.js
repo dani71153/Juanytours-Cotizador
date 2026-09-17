@@ -64,33 +64,45 @@ window.Sesion = (function () {
     // Activar la pestaña que estaba activa
     const activo = sesion.tabs.find(t => t.id === sesion.activeTabId);
 
-    if (activo && activo.tipo === 'cotizacion' && activo.dbId) {
+    if (activo && activo.tipo === 'cotizacion') {
       try {
-        const reg = await CotDB.obtener(activo.dbId);
-        if (reg) {
-          // Verificar si hay un borrador más reciente para este tab
-          const borrador = Borrador.cargar();
-          let datos = reg.datos;
+        // Copia guardada en IndexedDB (si la cotización se guardó alguna vez)
+        let datos = null;
+        let tsDB  = 0;
+        if (activo.dbId) {
+          const reg = await CotDB.obtener(activo.dbId);
+          if (reg) { datos = reg.datos; tsDB = new Date(reg.fechaModif || 0); }
+        }
 
-          if (borrador && borrador.tabId === activo.id) {
-            const tsBorrador = new Date(borrador.timestamp);
-            const tsDB       = new Date(reg.fechaModif || 0);
-            if (tsBorrador > tsDB) {
-              datos = borrador.estado;
-              // Marcar la pestaña como sin guardar y avisarle al usuario
-              const tab = tabManager.tabs.find(t => t.id === activo.id);
-              if (tab) tab.sinGuardar = true;
-              tabManager.renderTabs();
-              setTimeout(() => mostrarToast('Borrador recuperado ↑', false), 600);
-            }
-            Borrador.limpiar(); // ya se usó o es más antiguo
+        // Borrador de esta pestaña. Manda si es más reciente que lo
+        // guardado y, sobre todo, es la ÚNICA copia cuando la cotización
+        // nunca se guardó: antes se descartaba en ese caso y al recargar
+        // se perdía todo lo escrito (importes ajustados incluidos).
+        const borrador = Borrador.cargar();
+        let recuperado = false;
+        if (borrador && borrador.tabId === activo.id) {
+          const tsBorrador = new Date(borrador.timestamp);
+          if (!datos || tsBorrador > tsDB) {
+            datos      = borrador.estado;
+            recuperado = true;
+            const tab = tabManager.tabs.find(t => t.id === activo.id);
+            if (tab) tab.sinGuardar = true;
+            tabManager.renderTabs();
+            setTimeout(() => mostrarToast('Borrador recuperado ↑', false), 600);
+          } else {
+            Borrador.limpiar();   // más antiguo que lo guardado: ya no sirve
           }
+        }
 
+        if (datos) {
           await tabManager._activarTab(activo.id, datos);
+          // El borrador recuperado no se borra: si se vuelve a recargar
+          // sin guardar, sigue siendo la única copia.
+          if (recuperado) Borrador.guardarYa(datos, activo.id);
           return true;
         }
       } catch (e) {
-        console.warn('[Sesion] Error cargando tab activo desde DB:', e);
+        console.warn('[Sesion] Error cargando tab activo:', e);
       }
     }
 

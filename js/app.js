@@ -135,6 +135,8 @@ function nuevaCotizacion() {
       : `<span class="po-inicial">${escHTML(inicial)}</span>`;
     const desc = p.plantilla === 'laps'
       ? 'Columnas UD. M y TOTAL &middot; pie de firmas'
+      : p.plantilla === 'hcl'
+      ? 'Factura con contenedor, puerto y abono'
       : 'Excento / gravado &middot; total en USD';
     return `
     <button class="perfil-opcion${p.id === activo ? ' perfil-opcion-activa' : ''}"
@@ -241,6 +243,7 @@ function poblarEmpresa(e) {
     // ?? y no ||: un prefijo vacío es válido (LAPS numera sin prefijo)
     prefijo:     nu.prefijo   ?? 'COT-',
     siguiente:   nu.siguiente || 1,
+    manual:      !!nu.manual,
     itbis:       fi.itbisPorcentaje || 18
   };
 
@@ -740,6 +743,10 @@ function capturarEstado() {
     validoHasta:   getCE('doc-valido-hasta'),
     vendedor:      getCE('doc-vendedor'),
     vencimiento:   document.getElementById('doc-vencimiento')?.value || '',
+    // Campos que sólo usa la plantilla Herrera (HCL)
+    contenedor:    getCE('doc-contenedor'),
+    puerto:        getCE('doc-puerto'),
+    abono:         getCE('doc-abono'),
     // Se conserva por compatibilidad con cotizaciones guardadas antes
     ocultarTasa: document.getElementById('documento')?.classList.contains('sin-tasa') || false
   };
@@ -765,6 +772,12 @@ function restaurarEstado(datos) {
   const venc = document.getElementById('doc-vencimiento');
   if (venc) venc.value = datos.vencimiento || '';
 
+  // Campos de la plantilla Herrera (inofensivos si no existen)
+  const def = window.EMPRESA?.defectos || {};
+  setCE('doc-contenedor', datos.contenedor || '');
+  setCE('doc-puerto',     datos.puerto ?? def.puerto ?? '');
+  setCE('doc-abono',      datos.abono  || '');
+
   const sel = document.getElementById('sel-tipo-doc');
   if (sel && datos.tipoDoc) { sel.value = datos.tipoDoc; cambiarTipoDoc(datos.tipoDoc); }
 
@@ -785,7 +798,7 @@ function restaurarEstado(datos) {
   // Restaurar visibilidad de elementos en PDF/exportación
   // (formato antiguo: sólo existía "ocultarTasa")
   aplicarOpcionesVis(datos.ocultar || { tasa: !!datos.ocultarTasa });
-  aplicarEtiquetaIdCliente(datos.idCliente || 'RNC');
+  aplicarEtiquetaIdCliente(datos.idCliente || window.EMPRESA?.defectos?.idCliente || 'RNC');
   aplicarHoja(datos.hoja || HOJA_DEFECTO, datos.orientacion || 'portrait');
   aplicarEscalaImpresion(datos.escala || 'compacto');
 
@@ -809,13 +822,19 @@ function iniciarEstadoVacio(numero = null) {
   setCE('doc-notas',  '');
   setCE('doc-cli-dir',     '');
   setCE('doc-cod-cliente', '');
+  setCE('doc-contenedor',  '');
+  setCE('doc-puerto',      window.EMPRESA?.defectos?.puerto || '');
+  setCE('doc-abono',       '');
   setCE('doc-vendedor',     window.EMPRESA?.defectos?.vendedor    || '');
   setCE('doc-valido-hasta', window.EMPRESA?.defectos?.validoHasta || '');
   const vencNuevo = document.getElementById('doc-vencimiento');
   if (vencNuevo) vencNuevo.value = '';
 
+  // Cada empresa puede arrancar en otro tipo de documento
+  // (Herrera factura, las demás cotizan)
+  const tipoIni = window.EMPRESA?.defectos?.tipoDoc || 'COTIZACIÓN';
   const sel = document.getElementById('sel-tipo-doc');
-  if (sel) { sel.value = 'COTIZACIÓN'; cambiarTipoDoc('COTIZACIÓN'); }
+  if (sel) { sel.value = tipoIni; cambiarTipoDoc(tipoIni); }
 
   document.getElementById('doc-fecha').value = hoy();
 
@@ -829,7 +848,7 @@ function iniciarEstadoVacio(numero = null) {
   }
 
   aplicarOpcionesVis({});
-  aplicarEtiquetaIdCliente('RNC');
+  aplicarEtiquetaIdCliente(window.EMPRESA?.defectos?.idCliente || 'RNC');
   aplicarHoja(HOJA_DEFECTO, 'portrait');
   aplicarEscalaImpresion('compacto');
 
@@ -1075,7 +1094,9 @@ function importarRespaldoJSON() {
 
 function agregarFila() {
   contadorFilas++;
-  cot.items.push({ id: contadorFilas, type: 'item', desc: '', cantidad: 1, monto: 0, formula: '', tipo: 'exento' });
+  // El tipo por defecto lo decide la empresa: en Herrera todo lleva ITEBIS
+  const tipoDef = window.EMPRESA?.defectos?.tipoItem === 'gravado' ? 'gravado' : 'exento';
+  cot.items.push({ id: contadorFilas, type: 'item', desc: '', cantidad: 1, monto: 0, formula: '', tipo: tipoDef });
   renderFilas();
   TabManager.marcarSinGuardar();
 }
@@ -1113,6 +1134,10 @@ function renderFilas() {
   tbody.innerHTML = '';
   let numItem = 0;
 
+  // Qué columnas tiene la tabla depende de la plantilla de la empresa
+  const laps = Perfiles.plantilla() === 'laps';
+  const hcl  = Perfiles.plantilla() === 'hcl';
+
   cot.items.forEach((fila, idx) => {
     const tr      = document.createElement('tr');
     tr.dataset.id = fila.id;
@@ -1123,12 +1148,11 @@ function renderFilas() {
       <button class="btn-mover" onclick="moverFila(${fila.id},-1)" ${isFirst ? 'disabled' : ''} title="Subir">&#8593;</button>
       <button class="btn-mover" onclick="moverFila(${fila.id}, 1)" ${isLast  ? 'disabled' : ''} title="Bajar">&#8595;</button>`;
 
-    const laps = Perfiles.plantilla() === 'laps';
 
     if (fila.type === 'nota') {
       tr.className = 'tr-nota';
       tr.innerHTML = `
-        <td class="td-nota" colspan="${laps ? 5 : 4}" contenteditable="true"
+        <td class="td-nota" colspan="${hcl ? 3 : (laps ? 5 : 4)}" contenteditable="true"
             data-field="texto"
             data-placeholder="Escribe aquí la nota o aclaración..."
         >${escHTML(fila.texto)}</td>
@@ -1142,11 +1166,17 @@ function renderFilas() {
 
     } else {
       numItem++;
-      const celdaNum    = laps ? '' : `<td class="td-num">${numItem}</td>`;
+      const celdaNum    = (laps || hcl) ? '' : `<td class="td-num">${numItem}</td>`;
       const celdaUnidad = laps
         ? `<td class="td-unidad" contenteditable="true" data-field="unidad"
                data-placeholder="UNIDAD">${escHTML(fila.unidad || 'UNIDAD')}</td>`
+        : hcl
+        ? `<td class="td-llegada" contenteditable="true" data-field="unidad"
+               data-placeholder="&nbsp;">${escHTML(fila.unidad || '')}</td>`
         : '';
+      // HCL factura por precio, sin columna de cantidad (queda en 1)
+      const celdaCant   = hcl ? '' : `<td class="td-cantidad" contenteditable="true" data-field="cantidad"
+            data-placeholder="1">${fila.cantidad}</td>`;
       const celdaLinea  = laps
         ? `<td class="td-linea" data-field="linea">${formatNum((fila.monto || 0) * (fila.cantidad || 1))}</td>`
         : '';
@@ -1162,8 +1192,7 @@ function renderFilas() {
             data-placeholder="Descripción del servicio&#10;(puede ser multilínea)"
         >${escHTML(fila.desc)}</td>
         ${celdaUnidad}
-        <td class="td-cantidad" contenteditable="true" data-field="cantidad"
-            data-placeholder="1">${fila.cantidad}</td>
+        ${celdaCant}
         <td class="td-monto${claseF}" contenteditable="true" data-field="monto"
             data-placeholder="0.00"${Formula.attrsCelda(fila)}>${textoF}</td>
         ${celdaLinea}
@@ -1206,7 +1235,7 @@ function renderFilas() {
   for (let x = total; x < 3; x++) {
     const tr2 = document.createElement('tr');
     tr2.className = 'tr-vacio';
-    tr2.innerHTML = '<td></td>'.repeat(Perfiles.plantilla() === 'laps' ? 5 : 4);
+    tr2.innerHTML = '<td></td>'.repeat(hcl ? 3 : (laps ? 5 : 4));
     tbody.appendChild(tr2);
   }
 }
@@ -1520,6 +1549,16 @@ function calcularTotales() {
   // Filas propias de LAPS: Subtotal = base imponible, Suma = subtotal + ITBIS
   setText('tot-subtotal', formatNum(gravado));
   setText('tot-suma',     formatNum(gravado + itbs));
+
+  // Plantilla Herrera: el Subtotal es la base gravada (igual que en
+  // LAPS), así "ITEBIS %18" sí es el 18% de lo que tiene encima. La
+  // fila de Excento sólo se enciende si hay líneas sin impuesto: con
+  // todo gravado el pie sale idéntico a su factura original.
+  document.querySelectorAll('.hcl-fila-excento')
+    .forEach(tr => tr.classList.toggle('hcl-oculto', excento <= 0));
+  const abono = parseMonto(getCE('doc-abono'));
+  setText('tot-suma-hcl', formatNum(totalDOP));
+  setHTML('tot-adeudado', '<strong>' + formatNum(totalDOP - abono) + '</strong>');
   setHTML('tot-dop', '<strong>' + formatNum(totalDOP) + '</strong>');
   setHTML('tot-usd', '<strong>' + formatNum(totalUSD) + '</strong>');
 
@@ -2108,8 +2147,10 @@ function renderModalOpciones() {
 function renderProximoNumero() {
   const inp = document.getElementById('opc-prox-numero');
   if (!inp) return;
-  inp.value = _contadorActual() + 1;
-  inp.oninput = actualizarPreviewNumero;
+  const manual = !!window._DEFAULTS?.manual;
+  inp.disabled = manual;
+  inp.value    = manual ? '' : _contadorActual() + 1;
+  inp.oninput  = actualizarPreviewNumero;
   actualizarPreviewNumero();
 }
 
@@ -2117,6 +2158,10 @@ function actualizarPreviewNumero() {
   const inp  = document.getElementById('opc-prox-numero');
   const prev = document.getElementById('opc-prox-preview');
   if (!inp || !prev) return;
+  if (window._DEFAULTS?.manual) {
+    prev.value = 'Se escribe a mano';
+    return;
+  }
   const n = parseInt(inp.value, 10);
   const prefijo = window._DEFAULTS?.prefijo ?? 'COT-';
   prev.value = (isNaN(n) || n < 1) ? '—' : prefijo + String(n).padStart(3, '0');
@@ -2152,6 +2197,8 @@ function renderSelectorPerfil() {
     const pl = Perfiles.plantilla();
     exp.textContent = pl === 'laps'
       ? 'Plantilla LAPS: logo centrado, columnas UD. M y TOTAL por línea, y pie de firmas.'
+      : pl === 'hcl'
+      ? 'Plantilla Herrera: factura con CONTENEDOR y PUERTO, columna de fecha de llegada, y pie con Abono y Total Adeudado.'
       : 'Plantilla clásica: logo a la izquierda, totales con excento/gravado y conversión a USD.';
   }
 }
@@ -2236,6 +2283,22 @@ function iniciarListenersDocumento() {
   document.getElementById('doc-vencimiento')?.addEventListener('change', () => {
     TabManager.marcarSinGuardar();
   });
+
+  // Abono (plantilla Herrera): al escribirlo se recalcula el Total
+  // Adeudado, y al salir queda formateado como el resto de importes.
+  const abono = document.getElementById('doc-abono');
+  if (abono) {
+    abono.addEventListener('input', calcularTotales);
+    abono.addEventListener('blur', () => {
+      const v = parseMonto(abono.textContent);
+      abono.textContent = v ? formatNum(v) : '';
+      calcularTotales();
+      TabManager.marcarSinGuardar();
+    });
+    abono.addEventListener('keydown', ev => {
+      if (ev.key === 'Enter') { ev.preventDefault(); abono.blur(); }
+    });
+  }
 
   // El vendedor va en los dos sentidos: lo que se escribe en el
   // documento pasa a ser el defecto de la empresa (Opciones → Empresa
@@ -2352,6 +2415,10 @@ function _generarNumero() {
   const d       = window._DEFAULTS || {};
   const prefijo = d.prefijo ?? 'COT-';
   const perfil  = Perfiles.activoId();
+
+  // Herrera numera a mano (el número es el NCF): se deja en blanco
+  // para escribirlo en cada factura.
+  if (d.manual) return '';
 
   window._cotNumCounter = _contadorActual() + 1;
   window._cotNumPerfil  = perfil;
@@ -2506,6 +2573,13 @@ async function exportarHTML() {
     sT('tot-subtotal',fN(gr));sT('tot-suma',fN(gr+itbs));
     sH('tot-dop','<strong>'+fN(dop)+'</strong>');
     sH('tot-usd','<strong>'+fN(usd)+'</strong>');
+    // Plantilla Herrera: Excento sólo si hay algo exento, abono y adeudado
+    document.querySelectorAll('.hcl-fila-excento').forEach(function(tr){
+      tr.classList.toggle('hcl-oculto', ex <= 0);
+    });
+    sT('tot-suma-hcl',fN(dop));
+    var ab=pM((document.getElementById('doc-abono')||{}).innerText||'0');
+    sH('tot-adeudado','<strong>'+fN(dop-ab)+'</strong>');
   };
   window.cambiarTipoDoc=function(v){sT('doc-titulo-texto',v);sT('cli-tipo-doc-texto',v);};
   window.cambiarEtiquetaNcf=function(v){sT('lbl-ncf',(v==='Avance'?'Avance':'NCF')+':');};
@@ -2516,6 +2590,8 @@ async function exportarHTML() {
   document.querySelectorAll('[data-field="cantidad"]').forEach(function(el){
     el.addEventListener('input',window.calcTotales);
   });
+  var elAbono=document.getElementById('doc-abono');
+  if(elAbono) elAbono.addEventListener('input',window.calcTotales);
   // Los importes aceptan fórmulas también en el archivo exportado
   document.querySelectorAll('[data-field="monto"]').forEach(function(el){
     Formula.engancharCelda(el,{alCambiar:window.calcTotales});

@@ -44,6 +44,8 @@ Juanytours- Cotizador/
 │   └── app.js                 # Lógica principal, TabManager, Biblioteca
 └── css/
     ├── estilos.css            # Estilos del documento/editor
+    ├── plantilla-laps.css     # Estilos de la plantilla LAPS
+    ├── plantilla-hcl.css      # Estilos de la plantilla Herrera Customs
     └── biblioteca.css         # Estilos del panel biblioteca y componentes
 ```
 
@@ -61,6 +63,46 @@ Objeto global `window.EMPRESA` con toda la información de la empresa. Es el ún
 | `banco` | Nombre del banco, cuentas USD/DOP, IBANs, SWIFT |
 | `fiscal` | Porcentaje ITBIS, moneda local (DOP), moneda extranjera (USD), tasa de cambio por defecto |
 | `numeracion` | Prefijo de numeración (`COT-`) y número de inicio |
+
+---
+
+### 1.1 Plantillas de Documento
+
+`plantilla` en cada perfil decide con qué diseño se imprime. Hay tres:
+
+| Valor | Empresa | Cómo es |
+|---|---|---|
+| `clasica` | Juanytours | Logo a la izquierda, columnas Cant./Detalles/Cantidad/Monto, totales con excento/gravado y conversión a USD |
+| `laps` | LAPS | Logo centrado, caja de datos a la derecha, columnas UD. M y TOTAL por línea, datos bancarios en texto y pie de firmas |
+| `hcl` | Herrera Customs | Marco alrededor de todo el documento, columnas DESCRIPCION / FECHA DE LLEGADA / PRECIO, CONTENEDOR y PUERTO en la caja de datos, y pie de totales con **Abono** y **Total Adeudado** |
+
+Cada una es una función en [`js/plantilla.js`](js/plantilla.js) (`interiorClasica`, `interiorLaps`,
+`interiorHcl`) y su hoja de estilos se activa con la clase `.pl-<valor>` que `montarDocumento()`
+pone en `#documento`.
+
+**Particularidades de la plantilla Herrera** (reproducen su factura):
+
+- **Sin columna de cantidad**: se factura por precio, la cantidad queda en 1. La columna
+  *FECHA DE LLEGADA* reutiliza el campo `unidad` de la fila, así que no hubo que tocar el
+  modelo de datos.
+- **Gravado por defecto**: `defectos.tipoItem: 'gravado'`, porque en su factura el ITEBIS se
+  calcula sobre todas las líneas. Es sólo el valor con el que nace la fila — el selector
+  exento/gravado sigue funcionando fila por fila.
+- **Subtotal = base gravada** (igual que en LAPS), para que el rótulo *ITEBIS %18* sea de verdad
+  el 18% de la cifra que tiene encima. La fila **Excento** está oculta y sólo se enciende cuando
+  hay líneas sin impuesto (`.hcl-fila-excento`, desde `calcularTotales()`): con todo gravado el
+  pie sale idéntico a la factura original, y si marcas una línea exenta aparece la fila y se
+  sigue cumpliendo *Excento + Subtotal + ITEBIS = Total*.
+- **Abono** se escribe a mano (`#doc-abono`, acepta comas) y **Total Adeudado** se calcula:
+  `Total − Abono`. En el PDF de origen ese número estaba escrito a mano y no cuadraba.
+- **Numeración manual** (`numeracion.manual: true`): el número del documento es el NCF
+  (`B0100000017`), así que se escribe en cada factura y no hay contador automático. En Opciones,
+  el campo del próximo número queda deshabilitado con el aviso "Se escribe a mano".
+- El documento arranca en **FACTURA DE CRÉDITO FISCAL** (`defectos.tipoDoc`) y la identificación
+  del cliente en **RUC** (`defectos.idCliente`), por ser cliente panameño.
+- Campos nuevos en el estado: `contenedor`, `puerto` y `abono`.
+- El logo se usa recortado (`herrera-customs-logistic-recortado.png`): el original trae 500×500
+  con mucho margen blanco, que dejaba el logo diminuto. El original se conserva sin tocar.
 
 ---
 

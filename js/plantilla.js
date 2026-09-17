@@ -78,11 +78,14 @@
   // plantilla 'laps' agrega la columna UD. M y el total por línea.
   function filasExport(items, plantilla) {
     const laps = plantilla === 'laps';
+    const hcl  = plantilla === 'hcl';
+    // Columnas visibles: HCL no lleva nº, cantidad ni total por línea
+    const cols = hcl ? 3 : (laps ? 5 : 4);
     let html = '', numItem = 0;
     (items || []).forEach(f => {
       if (f.type === 'nota') {
         html += `      <tr class="tr-nota">
-        <td class="td-nota" colspan="${laps ? 5 : 4}" contenteditable="true">${esc(f.texto || '')}</td>
+        <td class="td-nota" colspan="${cols}" contenteditable="true">${esc(f.texto || '')}</td>
         <td></td>
       </tr>\n`;
       } else {
@@ -95,13 +98,15 @@
         // para poder seguir editándola en el archivo exportado.
         const fmla    = f.formula || '';
         const attrF   = fmla ? ` data-formula="${esc(fmla).replace(/"/g, '&quot;')}" title="F&oacute;rmula: ${esc(fmla).replace(/"/g, '&quot;')}"` : '';
-        const cNum    = laps ? '' : `        <td class="td-num">${numItem}</td>\n`;
-        const cUnidad = laps ? `        <td class="td-unidad" contenteditable="true" data-field="unidad" data-placeholder="UNIDAD">${esc(f.unidad || 'UNIDAD')}</td>\n` : '';
+        const cNum    = (laps || hcl) ? '' : `        <td class="td-num">${numItem}</td>\n`;
+        const cUnidad = laps ? `        <td class="td-unidad" contenteditable="true" data-field="unidad" data-placeholder="UNIDAD">${esc(f.unidad || 'UNIDAD')}</td>\n`
+                      : hcl  ? `        <td class="td-llegada" contenteditable="true" data-field="unidad" data-placeholder=" ">${esc(f.unidad || '')}</td>\n`
+                      : '';
+        const cCant   = hcl ? '' : `        <td class="td-cantidad" contenteditable="true" data-field="cantidad" data-placeholder="1">${cant}</td>\n`;
         const cLinea  = laps ? `        <td class="td-linea" data-field="linea">${num(monto * cant)}</td>\n` : '';
         html += `      <tr data-tipo="${tipo}"${visible ? '' : ' class="fila-oculta"'}>
 ${cNum}        <td class="td-det" contenteditable="true" data-field="desc" data-placeholder="Descripci&oacute;n del servicio">${esc(f.desc || '')}</td>
-${cUnidad}        <td class="td-cantidad" contenteditable="true" data-field="cantidad" data-placeholder="1">${cant}</td>
-        <td class="td-monto${fmla ? ' con-formula' : ''}" contenteditable="true" data-field="monto" data-placeholder="0.00"${attrF}>${num(monto)}</td>
+${cUnidad}${cCant}        <td class="td-monto${fmla ? ' con-formula' : ''}" contenteditable="true" data-field="monto" data-placeholder="0.00"${attrF}>${num(monto)}</td>
 ${cLinea}        <td class="td-tipo no-print">
           <select class="sel-tipo-item">
             <option value="exento"${tipo === 'exento' ? ' selected' : ''}>Exento</option>
@@ -112,7 +117,7 @@ ${cLinea}        <td class="td-tipo no-print">
       }
     });
     const totalItems = (items || []).filter(f => f.type === 'item').length;
-    const celdas = laps ? 6 : 5;
+    const celdas = hcl ? 4 : (laps ? 6 : 5);
     for (let x = totalItems; x < 3; x++) {
       html += `      <tr class="tr-vacio">${'<td></td>'.repeat(celdas)}</tr>\n`;
     }
@@ -135,7 +140,9 @@ ${cLinea}        <td class="td-tipo no-print">
   //  que es donde viven las clases sin-* de visibilidad.
   function interior(ctx) {
     ctx = ctx || {};
-    return (ctx.plantilla === 'laps' ? interiorLaps : interiorClasica)(ctx);
+    if (ctx.plantilla === 'laps') return interiorLaps(ctx);
+    if (ctx.plantilla === 'hcl')  return interiorHcl(ctx);
+    return interiorClasica(ctx);
   }
 
   // ── Diseño clásico (Juanytours) ────────────
@@ -452,7 +459,172 @@ ${bancoHTML}
 `;
   }
 
-  const Plantilla = { TIPOS_DOC, interior, interiorClasica, interiorLaps, cuentas, lineasBanco, filasExport, esc, num };
+  // ── Diseño Herrera Customs Logistic ────────
+  //  Igual de "caja" que LAPS, pero: sin columnas de cantidad ni
+  //  total por línea (la tabla es DESCRIPCION | FECHA DE LLEGADA |
+  //  PRECIO), con CONTENEDOR y PUERTO en la caja del documento, y
+  //  el pie de totales termina en Abono + Total Adeudado.
+  function interiorHcl(ctx) {
+    ctx = ctx || {};
+    const editor = ctx.modo !== 'export';
+    const e      = ctx.estado   || {};
+    const emp    = ctx.empresa  || {};
+    const fi     = ctx.fiscal   || {};
+    const def    = ctx.defectos || {};
+
+    const tipoDoc   = e.tipoDoc || def.tipoDoc || 'FACTURA DE CRÉDITO FISCAL';
+    const etqRncEmp = emp.rncLabel || 'RNC';
+    const etqIdCli  = e.idCliente  || def.idCliente || 'RUC';
+    const itbisPct  = fi.itbisPorcentaje || 18;
+    const etqItbis  = fi.etiquetaItbis   || 'ITEBIS';
+    const simbolo   = fi.simboloMoneda   || 'RD$';
+
+    const tiposOpts = TIPOS_DOC
+      .map(t => `<option value="${t}"${t === tipoDoc ? ' selected' : ''}>${t}</option>`)
+      .join('');
+
+    const cuerpoTabla = editor ? '\n' : '\n' + (ctx.filasHTML || '');
+
+    return `
+    <!-- Todo el documento va dentro de un marco, como en la factura -->
+    <div class="hcl-marco">
+
+    <!-- CABECERA: logo y datos centrados -->
+    <div class="hcl-cab">
+      <img id="doc-logo" src="${esc(ctx.logo || '')}" alt="Logo" class="hcl-logo" />
+      <p class="hcl-cab-linea">${esc(emp.ciudad || '')}${emp.email ? '&nbsp;&nbsp; email: ' + esc(emp.email) : ''}</p>
+      <p class="hcl-cab-linea">${emp.telefonoCab || emp.telefono ? 'Tel: ' + esc(emp.telefonoCab || emp.telefono) : ''}</p>
+    </div>
+
+    <div class="linea-azul"></div>
+
+    <!-- EMISOR + CLIENTE  |  CAJA DE DATOS DEL DOCUMENTO -->
+    <div class="hcl-bloques">
+      <div class="hcl-emisor">
+        <p id="doc-empresa-nombre" class="empresa-nombre">${esc(emp.nombre || '')}</p>
+        <p id="doc-empresa-rnc">${emp.rnc ? esc(etqRncEmp) + '-' + esc(emp.rnc) : ''}</p>
+        <p id="doc-empresa-dir">${esc(emp.direccion || '')}</p>
+        <p id="doc-empresa-tel">${emp.telefono ? 'Tel: ' + esc(emp.telefono) : ''}</p>
+        <p id="doc-empresa-ciudad" class="hcl-oculto">${esc(emp.ciudad || '')}</p>
+
+        <div class="hcl-cliente">
+          <p class="hcl-cli-tit">CLIENTE</p>
+          <p class="hcl-cli-nombre">
+            <span class="cli-val" contenteditable="true" id="doc-cliente" data-placeholder="Nombre del cliente">${esc(e.cliente || '')}</span>
+          </p>
+          <p><span class="cli-label" id="lbl-cli-rnc">${esc(etqIdCli)}:</span>
+             <span class="cli-val" contenteditable="true" id="doc-cli-rnc" data-placeholder="${esc(etqIdCli)}">${esc(e.rncCli || '')}</span></p>
+          <p class="hcl-cli-dir"><span class="cli-val cli-val-ancho" contenteditable="true" id="doc-cli-dir"
+             data-placeholder="Direcci&oacute;n, ciudad, pa&iacute;s, correo&hellip;">${esc(e.dirCliente || '')}</span></p>
+          <p class="hcl-cli-tel">Tel: <span class="cli-val" contenteditable="true" id="doc-cli-tel" data-placeholder="Tel&eacute;fono">${esc(e.telCli || '')}</span></p>
+          <!-- El NCF de esta factura es el número del documento (B01…),
+               así que el bloque del cliente no repite NCF ni Referencia.
+               Los campos siguen existiendo, ocultos, por compatibilidad
+               con cotizaciones guardadas. -->
+          <span class="hcl-oculto cli-fila-ncf">${etiquetaNcf(e)}
+             <span contenteditable="true" id="doc-ncf">${esc(e.ncf || '')}</span></span>
+          <span class="hcl-oculto fr-fila-ref">
+             <span contenteditable="true" id="doc-ref">${esc(e.ref || '')}</span></span>
+        </div>
+      </div>
+
+      <div class="hcl-meta">
+        <div class="hm-cab">
+          <select id="sel-tipo-doc" class="sel-tipo no-print" onchange="cambiarTipoDoc(this.value)">${tiposOpts}</select>
+          <span id="doc-titulo-texto">${esc(tipoDoc)}</span>
+        </div>
+        <div class="hm-val hm-fuerte doc-numero-wrap">
+          <span class="doc-numero" contenteditable="true" id="doc-numero" data-placeholder="B01&hellip;">${esc(e.numero || '')}</span>
+        </div>
+        <div class="hm-cab">FECHA</div>
+        <div class="hm-val"><input type="date" id="doc-fecha" class="inp-fecha" value="${esc(e.fecha || '')}" /></div>
+        <div class="hm-cab">CONTENEDOR</div>
+        <div class="hm-val"><span contenteditable="true" id="doc-contenedor" data-placeholder="0">${esc(e.contenedor || '')}</span></div>
+        <div class="hm-cab">Codigo de Cliente</div>
+        <div class="hm-val"><span contenteditable="true" id="doc-cod-cliente" data-placeholder="0">${esc(e.codigoCliente || '')}</span></div>
+        <div class="hm-val hm-valido"><span contenteditable="true" id="doc-valido-hasta" data-placeholder="Valido hasta...">${esc(e.validoHasta || def.validoHasta || '')}</span></div>
+        <div class="hm-val">PUERTO:</div>
+        <div class="hm-val hm-fuerte"><span contenteditable="true" id="doc-puerto" data-placeholder="Puerto">${esc(e.puerto || def.puerto || '')}</span></div>
+      </div>
+    </div>
+
+    <!-- TABLA DE SERVICIOS -->
+    <table class="tabla-servicios tabla-hcl">
+      <thead>
+        <tr>
+          <th class="th-det">DESCRIPCION</th>
+          <th class="th-llegada">FECHA DE LLEGADA</th>
+          <th class="th-monto" title="Acepta f&oacute;rmulas: 1500+1500*10%, 1500+10%, (120+30)*2">PRECIO (${esc(simbolo)})</th>
+          <th class="th-tipo no-print">Tipo</th>
+${editor ? '          <th class="th-del  no-print"></th>\n' : ''}        </tr>
+      </thead>
+      <tbody id="tabla-body">${cuerpoTabla}      </tbody>
+    </table>
+
+    <!-- TOTALES -->
+    <div class="seccion-totales hcl-pie">
+      <div class="tot-der hcl-tot">
+        <table class="tabla-totales tabla-totales-hcl">
+          <!-- Excento sólo aparece si hay líneas sin ITEBIS: así, cuando
+               todo va gravado (lo normal aquí), el pie sale idéntico al
+               formato original. Lo enciende calcularTotales(). -->
+          <tr class="tot-fila-excento hcl-fila-excento hcl-oculto">
+            <td class="tot-label">Excento</td>
+            <td class="tot-signo">$</td>
+            <td class="tot-val" id="tot-excento">0.00</td>
+          </tr>
+          <tr class="tot-fila-subtotal">
+            <td class="tot-label">Subtotal</td>
+            <td class="tot-signo">$</td>
+            <td class="tot-val" id="tot-subtotal">0.00</td>
+          </tr>
+          <tr class="tot-fila-itbis">
+            <td class="tot-label">${esc(etqItbis)} %<span id="doc-itbis-pct">${itbisPct}</span></td>
+            <td class="tot-signo">$</td>
+            <td class="tot-val" id="tot-itbis">0.00</td>
+          </tr>
+          <tr class="tot-fila-suma">
+            <td class="tot-label">Total ${esc(etqItbis)} + Subtotal</td>
+            <td class="tot-signo">$</td>
+            <td class="tot-val" id="tot-suma-hcl">0.00</td>
+          </tr>
+          <tr class="tot-fila-abono">
+            <td class="tot-label">Abono</td>
+            <td class="tot-signo">$</td>
+            <td class="tot-val tot-val-edit"><span contenteditable="true" id="doc-abono" data-placeholder="0.00">${esc(e.abono || '')}</span></td>
+          </tr>
+          <tr class="tot-fila-dop hcl-adeudado">
+            <td class="tot-label"><strong>Total Adeudado</strong></td>
+            <td class="tot-signo"></td>
+            <td class="tot-val" id="tot-adeudado"><strong>0.00</strong></td>
+          </tr>
+        </table>
+      </div>
+    </div>
+
+    </div><!-- /hcl-marco -->
+
+    <!-- NOTA + FIRMAS -->
+    <div class="pago-notas hcl-nota" contenteditable="true" id="doc-notas" data-placeholder="Nota...">${esc(e.notas || '')}</div>
+
+    <div class="laps-firmas hcl-firmas">
+      <div class="laps-firma">AUTORIZADA POR :
+        <span class="cli-val" contenteditable="true" id="doc-vendedor"
+              title="Clic para escribir qui&eacute;n autoriza" data-placeholder="Nombre">${esc(e.vendedor || def.vendedor || '')}</span>
+      </div>
+      <div class="laps-firma">RECIBIDO POR :</div>
+    </div>
+    <div class="laps-firma-espacio hcl-firma-espacio">
+      <span id="doc-metodo" class="hcl-oculto" contenteditable="true">${esc(e.metodo || '')}</span>
+      <span id="doc-pague-a" class="hcl-oculto">${esc((ctx.banco || {}).pagueA || '')}</span>
+      <span id="doc-rnc-pago" class="hcl-oculto">${esc(emp.rnc || '')}</span>
+      <span id="doc-banco-nombre" class="hcl-oculto">${esc((ctx.banco || {}).nombre || '')}</span>
+      <div id="bloque-cuentas" class="hcl-oculto"></div>
+    </div>
+`;
+  }
+
+  const Plantilla = { TIPOS_DOC, interior, interiorClasica, interiorLaps, interiorHcl, cuentas, lineasBanco, filasExport, esc, num };
 
   root.Plantilla = Plantilla;
   if (typeof module !== 'undefined' && module.exports) module.exports = Plantilla;

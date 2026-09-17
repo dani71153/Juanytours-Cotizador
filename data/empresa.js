@@ -108,6 +108,66 @@ window.PERFILES = {
       vendedor:    "ANTONIO PAULINO",
       validoHasta: "Valido hasta 31 Diciembre 2026"
     }
+  },
+
+  // ══════════════════════════════════════════
+  herrera: {
+    nombre:    "Herrera Customs",
+    plantilla: "hcl",
+
+    empresa: {
+      nombre:    "HERRERA CUSTOMS LOGISTIC",
+      rnc:       "1330-291-89",
+      rncLabel:  "RNC",
+      direccion: "C/ Guarocuya no. 82, el Millon",
+      ciudad:    "Santo Domingo , R.D.",
+      telefono:  "809 770-1279",
+      email:     "herreracustomslogistic@gmail.com",
+      // La cabecera centrada lleva otro teléfono que el bloque del emisor
+      telefonoCab: "809 980-3088",
+      // Copia del logo sin el margen blanco del original (474x144)
+      logo:      "herrera-customs-logistic-recortado.png"
+    },
+
+    // La factura no imprime datos bancarios
+    banco: {
+      pagueA:          "Herrera Customs Logistic",
+      nombre:          "",
+      cuentaDOPLabel:  "",
+      cuentaDOP:       "",
+      cuentaUSDLabel:  "",
+      cuentaUSD:       "",
+      ibanUSD:         "",
+      ibanDOP:         "",
+      swift:           ""
+    },
+
+    fiscal: {
+      itbisPorcentaje:   18,
+      etiquetaItbis:     "ITEBIS",
+      simboloMoneda:     "RD$",
+      monedaLocal:       "DOP",
+      monedaExtranjera:  "USD",
+      tipoCambioDefault: 60.65
+    },
+
+    // manual: el número (NCF) se escribe en cada factura, sin contador
+    numeracion: {
+      prefijo:   "",
+      siguiente: 1,
+      manual:    true
+    },
+
+    defectos: {
+      // "AUTORIZADA POR :" va en blanco: se escribe en cada factura
+      vendedor:    "",
+      validoHasta: "Valido hasta 31 Diciembre 2026",
+      // En esta factura el ITEBIS se calcula sobre todas las líneas
+      tipoItem:    "gravado",
+      tipoDoc:     "FACTURA DE CRÉDITO FISCAL",
+      idCliente:   "RUC",
+      puerto:      "HAINA ORIENTAL"
+    }
   }
 
 };

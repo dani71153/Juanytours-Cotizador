@@ -1069,6 +1069,16 @@ body.vista-impresion .td-monto.formula-error { background: none !important; colo
   margin: 0;
 }
 .aj-vacio { color: #A0AEC0; font-style: italic; }
+
+.aj-nota-usd {
+  margin: 0;
+  padding: 7px 10px;
+  background: #FFF7E6;
+  border-bottom: 1px solid #F0DFC0;
+  color: #8A6D3B;
+  font-size: 11.5px;
+  line-height: 1.4;
+}
 .aj-error { color: #991B1B; }
 
 .aj-deshacer { margin-right: auto; }
@@ -1603,7 +1613,9 @@ body.vista-impresion .td-monto.formula-error { background: none !important; colo
 .po-marca {
   position: relative;
   flex-shrink: 0;
-  width: 44px;
+  /* Más ancho que alto: los logos apaisados (Herrera es 3.3:1) se
+     quedaban en una tira de 11px dentro de una caja cuadrada. */
+  width: 62px;
   height: 44px;
   border-radius: 8px;
   background: #F1F5FA;
@@ -1616,7 +1628,7 @@ body.vista-impresion .td-monto.formula-error { background: none !important; colo
 .po-marca img {
   position: relative;
   z-index: 1;
-  max-width: 36px;
+  max-width: 54px;
   max-height: 36px;
   object-fit: contain;
   background: #F1F5FA;
@@ -1773,3 +1785,74 @@ body.vista-impresion::after {
   background: var(--azul-dark, #002B57);
   color: #fff;
 }
+
+/* =============================================
+   SWITCH DE MONEDA (encima de la hoja)
+   Cambia el documento entre pesos y dólares. Los precios se
+   escriben en pesos; la versión en dólares es la conversión a la
+   tasa activa, así que en ella los importes son de solo lectura.
+   ============================================= */
+.switch-moneda {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin: 22px auto 0;
+  width: 860px;
+  max-width: 100%;
+  font-size: 12.5px;
+  color: #5A6A7A;
+}
+
+.sm-etq { font-weight: bold; }
+
+.sm-grupo {
+  display: inline-flex;
+  background: #fff;
+  border: 1px solid #C3D0DE;
+  border-radius: 20px;
+  padding: 3px;
+  box-shadow: 0 1px 4px rgba(0,0,0,.08);
+}
+
+.sm-opcion {
+  padding: 5px 16px;
+  border: none;
+  border-radius: 16px;
+  background: transparent;
+  color: #5A6A7A;
+  font-family: var(--fuente);
+  font-size: 12.5px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background .15s, color .15s;
+  white-space: nowrap;
+}
+.sm-opcion:hover { background: #EDF3FA; color: var(--azul-dark); }
+.sm-activa,
+.sm-activa:hover {
+  background: var(--azul);
+  color: #fff;
+}
+
+.sm-nota {
+  font-size: 11.5px;
+  font-style: italic;
+  color: #8A98A8;
+}
+
+/* En la vista de dólares los importes no se editan: se calculan */
+#documento.doc-usd .td-monto,
+#documento.doc-usd .tot-val-edit [contenteditable] {
+  cursor: default;
+  background: #F7FAFD;
+}
+#documento.doc-usd .td-monto.con-formula::after,
+#documento.doc-usd .td-monto.formula-error::after { display: none; }
+#documento.doc-usd .tot-val-edit [contenteditable] { border-bottom: none; }
+@media print {
+  #documento.doc-usd .td-monto,
+  #documento.doc-usd .tot-val-edit [contenteditable] { background: none !important; }
+}
+body.vista-impresion #documento.doc-usd .td-monto,
+body.vista-impresion #documento.doc-usd .tot-val-edit [contenteditable] { background: none !important; }

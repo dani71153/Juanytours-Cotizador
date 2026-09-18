@@ -5,6 +5,9 @@
 
 // Estado del editor (cotización actualmente visible)
 const cot = {
+  // El abono (plantilla Herrera) se guarda SIEMPRE en pesos, como los
+  // importes: la vista en dólares lo muestra convertido.
+  abono: 0,
   items: []     // tipo 'item': { id, type, desc, cantidad, monto, formula, tipo }
                 //   formula: texto tal como se escribió ('1500+10%'), vacío
                 //   si el importe se puso como número — ver js/formula.js
@@ -200,8 +203,10 @@ function montarDocumento() {
     defectos:  E.defectos,
     logo:      E.empresa?.logo || ''
   });
-  // La clase de plantilla vive en el contenedor, junto a las sin-*
-  cont.classList.remove('pl-clasica', 'pl-laps');
+  // La clase de plantilla vive en el contenedor, junto a las sin-*.
+  // Se quitan TODAS las pl-* (y no una lista escrita a mano) para que
+  // agregar una plantilla nueva no deje dos activas a la vez.
+  [...cont.classList].filter(c => c.startsWith('pl-')).forEach(c => cont.classList.remove(c));
   cont.classList.add('pl-' + pl);
 
   // Deja lista la regla @page y el ancho en pantalla. En el primer
@@ -680,6 +685,7 @@ const TabManager = {
     if (edit) edit.style.display = mostrar ? ''     : 'none';
     if (pan)  pan.style.display  = mostrar ? 'none' : '';
     if (doc)  doc.style.display  = mostrar ? ''     : 'none';
+    mostrarSwitchMoneda(mostrar);
   },
 
   renderTabs() {
@@ -746,7 +752,9 @@ function capturarEstado() {
     // Campos que sólo usa la plantilla Herrera (HCL)
     contenedor:    getCE('doc-contenedor'),
     puerto:        getCE('doc-puerto'),
-    abono:         getCE('doc-abono'),
+    abono:         cot.abono || 0,
+    // Vista activa del documento: es la que se imprime
+    moneda:        monedaActiva(),
     // Se conserva por compatibilidad con cotizaciones guardadas antes
     ocultarTasa: document.getElementById('documento')?.classList.contains('sin-tasa') || false
   };
@@ -776,7 +784,7 @@ function restaurarEstado(datos) {
   const def = window.EMPRESA?.defectos || {};
   setCE('doc-contenedor', datos.contenedor || '');
   setCE('doc-puerto',     datos.puerto ?? def.puerto ?? '');
-  setCE('doc-abono',      datos.abono  || '');
+  cot.abono = parseMonto(datos.abono || 0);
 
   const sel = document.getElementById('sel-tipo-doc');
   if (sel && datos.tipoDoc) { sel.value = datos.tipoDoc; cambiarTipoDoc(datos.tipoDoc); }
@@ -802,6 +810,9 @@ function restaurarEstado(datos) {
   aplicarHoja(datos.hoja || HOJA_DEFECTO, datos.orientacion || 'portrait');
   aplicarEscalaImpresion(datos.escala || 'compacto');
 
+  // La moneda va al final: repinta filas y totales ya con la tasa puesta
+  aplicarMoneda(datos.moneda === 'USD' ? 'USD' : 'DOP');
+
   calcularTotales();
 }
 
@@ -824,7 +835,7 @@ function iniciarEstadoVacio(numero = null) {
   setCE('doc-cod-cliente', '');
   setCE('doc-contenedor',  '');
   setCE('doc-puerto',      window.EMPRESA?.defectos?.puerto || '');
-  setCE('doc-abono',       '');
+  cot.abono = 0;
   setCE('doc-vendedor',     window.EMPRESA?.defectos?.vendedor    || '');
   setCE('doc-valido-hasta', window.EMPRESA?.defectos?.validoHasta || '');
   const vencNuevo = document.getElementById('doc-vencimiento');
@@ -851,6 +862,7 @@ function iniciarEstadoVacio(numero = null) {
   aplicarEtiquetaIdCliente(window.EMPRESA?.defectos?.idCliente || 'RNC');
   aplicarHoja(HOJA_DEFECTO, 'portrait');
   aplicarEscalaImpresion('compacto');
+  aplicarMoneda('DOP');
 
   calcularTotales();
   TabManager.actualizarNumero(num);
@@ -1137,6 +1149,8 @@ function renderFilas() {
   // Qué columnas tiene la tabla depende de la plantilla de la empresa
   const laps = Perfiles.plantilla() === 'laps';
   const hcl  = Perfiles.plantilla() === 'hcl';
+  // Los importes sólo se editan en pesos: en dólares son la conversión
+  const editable = monedaActiva() !== 'USD';
 
   cot.items.forEach((fila, idx) => {
     const tr      = document.createElement('tr');
@@ -1152,7 +1166,7 @@ function renderFilas() {
     if (fila.type === 'nota') {
       tr.className = 'tr-nota';
       tr.innerHTML = `
-        <td class="td-nota" colspan="${hcl ? 3 : (laps ? 5 : 4)}" contenteditable="true"
+        <td class="td-nota" colspan="${laps ? 5 : 4}" contenteditable="true"
             data-field="texto"
             data-placeholder="Escribe aquí la nota o aclaración..."
         >${escHTML(fila.texto)}</td>
@@ -1166,7 +1180,7 @@ function renderFilas() {
 
     } else {
       numItem++;
-      const celdaNum    = (laps || hcl) ? '' : `<td class="td-num">${numItem}</td>`;
+      const celdaNum    = laps ? '' : `<td class="td-num">${numItem}</td>`;
       const celdaUnidad = laps
         ? `<td class="td-unidad" contenteditable="true" data-field="unidad"
                data-placeholder="UNIDAD">${escHTML(fila.unidad || 'UNIDAD')}</td>`
@@ -1178,14 +1192,17 @@ function renderFilas() {
       const celdaCant   = hcl ? '' : `<td class="td-cantidad" contenteditable="true" data-field="cantidad"
             data-placeholder="1">${fila.cantidad}</td>`;
       const celdaLinea  = laps
-        ? `<td class="td-linea" data-field="linea">${formatNum((fila.monto || 0) * (fila.cantidad || 1))}</td>`
+        ? `<td class="td-linea" data-field="linea">${formatNum(montoMostrado(fila.monto) * (fila.cantidad || 1))}</td>`
         : '';
       // Importe: si se escribió como fórmula se muestra el resultado y la
       // fórmula queda guardada. Una fórmula rota se muestra tal cual, para
       // que el error salte a la vista en lugar de imprimir un 0.00 mudo.
+      // En la vista en dólares se muestra la conversión y la celda no se
+      // edita: el precio se escribe en pesos (ver aplicarMoneda).
       const evalF  = fila.formula ? Formula.evaluar(fila.formula) : null;
       const claseF = !evalF ? '' : (evalF.ok ? ' con-formula' : ' formula-error');
-      const textoF = (evalF && !evalF.ok) ? escHTML(fila.formula) : formatNum(fila.monto);
+      const textoF = (evalF && !evalF.ok) ? escHTML(fila.formula)
+                                          : formatNum(montoMostrado(fila.monto));
       tr.innerHTML = `
         ${celdaNum}
         <td class="td-det" contenteditable="true" data-field="desc"
@@ -1193,8 +1210,9 @@ function renderFilas() {
         >${escHTML(fila.desc)}</td>
         ${celdaUnidad}
         ${celdaCant}
-        <td class="td-monto${claseF}" contenteditable="true" data-field="monto"
-            data-placeholder="0.00"${Formula.attrsCelda(fila)}>${textoF}</td>
+        <td class="td-monto${claseF}" contenteditable="${editable}" data-field="monto"
+            ${editable ? '' : 'title="En dólares el importe se calcula con la tasa: edítalo en pesos"'}
+            data-placeholder="0.00"${editable ? Formula.attrsCelda(fila) : ''}>${textoF}</td>
         ${celdaLinea}
         <td class="td-tipo no-print">
           <select class="sel-tipo-item" onchange="cambiarTipo(${fila.id}, this.value)">
@@ -1210,6 +1228,7 @@ function renderFilas() {
       tr.querySelectorAll('[contenteditable]').forEach(cel => {
         // El importe lo maneja Formula: acepta fórmulas, no sólo números
         if (cel.dataset.field === 'monto') {
+          if (!editable) return;          // en dólares es un valor calculado
           Formula.engancharCelda(cel, {
             alCambiar: (valor, formula) => {
               fila.monto   = valor;
@@ -1235,7 +1254,7 @@ function renderFilas() {
   for (let x = total; x < 3; x++) {
     const tr2 = document.createElement('tr');
     tr2.className = 'tr-vacio';
-    tr2.innerHTML = '<td></td>'.repeat(hcl ? 3 : (laps ? 5 : 4));
+    tr2.innerHTML = '<td></td>'.repeat(laps ? 5 : 4);
     tbody.appendChild(tr2);
   }
 }
@@ -1400,9 +1419,15 @@ function previsualizarAjuste() {
     : '';
   if (total) total.innerHTML = '';
 
-  if (est.error)   { cont.innerHTML = `<p class="aj-error">${escHTML(est.error)}</p>`; return; }
-  if (!est.ajuste) { cont.innerHTML = '<p class="aj-vacio">Escribe un ajuste para ver el resultado.</p>'; return; }
-  if (!est.enRango.length) { cont.innerHTML = '<p class="aj-vacio">El rango elegido no incluye ninguna fila.</p>'; return; }
+  // En la vista en dólares los precios siguen escribiéndose en pesos:
+  // conviene decirlo, o la vista previa parece de otra moneda.
+  const avisoUSD = monedaActiva() === 'USD'
+    ? '<p class="aj-nota-usd">Los ajustes y la vista previa están en <strong>pesos dominicanos (RD$)</strong>, aunque el documento se vea en dólares. Por ejemplo, <strong>+250 suma RD$250</strong> a cada importe.</p>'
+    : '';
+
+  if (est.error)   { cont.innerHTML = avisoUSD + `<p class="aj-error">${escHTML(est.error)}</p>`; return; }
+  if (!est.ajuste) { cont.innerHTML = avisoUSD + '<p class="aj-vacio">Escribe un ajuste para ver el resultado.</p>'; return; }
+  if (!est.enRango.length) { cont.innerHTML = avisoUSD + '<p class="aj-vacio">El rango elegido no incluye ninguna fila.</p>'; return; }
 
   let viejoTot = 0, nuevoTot = 0;
   const filas = est.enRango.map(it => {
@@ -1429,7 +1454,7 @@ function previsualizarAjuste() {
     </tr>`;
   }).join('');
 
-  cont.innerHTML = `<table class="aj-tabla">${filas}</table>`;
+  cont.innerHTML = avisoUSD + `<table class="aj-tabla">${filas}</table>`;
   if (total) total.innerHTML =
     `<span>Suma de las filas afectadas (importe &#215; cantidad)</span>
      <span class="aj-total-val">${formatNum(viejoTot)} &#8594; <strong>${formatNum(nuevoTot)}</strong></span>`;
@@ -1504,7 +1529,10 @@ function _syncItemsDesdeDOM() {
       if (d) fila.desc     = d.innerText;
       if (c) fila.cantidad = parseFloat(c.innerText) || 1;
       if (u) fila.unidad   = u.innerText.trim();
-      if (m) {
+      // El importe se lee del DOM sólo en la vista en pesos: en la de
+      // dólares la celda muestra la conversión (y es de sólo lectura),
+      // así que leerla machacaría el precio base con el convertido.
+      if (m && monedaActiva() !== 'USD') {
         // La celda muestra el resultado; la fórmula vive en data-formula
         const dm = Formula.datosCelda(m);
         fila.monto   = dm.monto;
@@ -1523,16 +1551,36 @@ function calcularTotales() {
   const itbsPct = parseFloat(document.getElementById('doc-itbis-pct')?.textContent)    || 18;
   const tbody   = document.getElementById('tabla-body');
 
-  let excento = 0, gravado = 0;
+  // En la vista en dólares los importes son de sólo lectura, así que
+  // se calculan desde cot.items con el importe YA redondeado a dos
+  // decimales: lo que se suma es exactamente lo que se imprime.
+  const enUSD = monedaActiva() === 'USD';
+
+  let excento = 0, gravado = 0;         // en la moneda mostrada
+  let excentoDOP = 0, gravadoDOP = 0;   // siempre en pesos
 
   cot.items.forEach(fila => {
     if (fila.type === 'nota') return;
-    const tr     = tbody.querySelector(`tr[data-id="${fila.id}"]`);
+    const tr = tbody.querySelector(`tr[data-id="${fila.id}"]`);
     if (!tr) return;
-    const monto  = Formula.valorCelda(tr.querySelector('[data-field="monto"]'));
-    const cant   = parseFloat(tr.querySelector('[data-field="cantidad"]')?.innerText || '1') || 1;
-    const total  = monto * cant;
-    if (fila.tipo === 'gravado') gravado += total; else excento += total;
+
+    const cant     = parseFloat(tr.querySelector('[data-field="cantidad"]')?.innerText || '1') || 1;
+    const montoDOP = enUSD
+      ? (fila.monto || 0)                                              // el DOM muestra dólares
+      : Formula.valorCelda(tr.querySelector('[data-field="monto"]'));  // lo que se esté escribiendo
+    const monto    = enUSD ? montoMostrado(montoDOP) : montoDOP;
+
+    const total    = monto * cant;
+    const totalDOPFila = montoDOP * cant;
+    if (fila.tipo === 'gravado') { gravado += total; gravadoDOP += totalDOPFila; }
+    else                         { excento += total; excentoDOP += totalDOPFila; }
+
+    // En dólares la celda es un valor calculado: se repinta aquí, así
+    // cambiar la tasa actualiza el documento sin volver a montarlo.
+    if (enUSD) {
+      const celMonto = tr.querySelector('[data-field="monto"]');
+      if (celMonto) celMonto.textContent = formatNum(monto);
+    }
 
     // Columna TOTAL por línea (sólo existe en la plantilla LAPS)
     const celLinea = tr.querySelector('[data-field="linea"]');
@@ -1540,8 +1588,10 @@ function calcularTotales() {
   });
 
   const itbs     = gravado * (itbsPct / 100);
-  const totalDOP = excento + gravado + itbs;
-  const totalUSD = tasa > 0 ? totalDOP / tasa : 0;
+  const total    = excento + gravado + itbs;             // moneda mostrada
+  const itbsDOP  = gravadoDOP * (itbsPct / 100);
+  const totalDOP = excentoDOP + gravadoDOP + itbsDOP;    // siempre en pesos
+  const totalUSD = enUSD ? total : (tasa > 0 ? totalDOP / tasa : 0);
 
   setText('tot-excento',  formatNum(excento));
   setText('tot-gravado',  formatNum(gravado));
@@ -1556,11 +1606,23 @@ function calcularTotales() {
   // todo gravado el pie sale idéntico a su factura original.
   document.querySelectorAll('.hcl-fila-excento')
     .forEach(tr => tr.classList.toggle('hcl-oculto', excento <= 0));
-  const abono = parseMonto(getCE('doc-abono'));
-  setText('tot-suma-hcl', formatNum(totalDOP));
-  setHTML('tot-adeudado', '<strong>' + formatNum(totalDOP - abono) + '</strong>');
+  // El abono se guarda en pesos y se muestra en la moneda activa
+  const abonoDOP = cot.abono || 0;
+  const abono    = enUSD ? montoMostrado(abonoDOP) : abonoDOP;
+  setText('tot-suma-hcl', formatNum(total));
+  setHTML('tot-adeudado', '<strong>' + formatNum(total - abono) + '</strong>');
+
+  // Estas dos filas dicen su moneda en el rótulo: cada una lleva
+  // siempre su propio valor, sin importar la vista activa.
   setHTML('tot-dop', '<strong>' + formatNum(totalDOP) + '</strong>');
   setHTML('tot-usd', '<strong>' + formatNum(totalUSD) + '</strong>');
+
+  // El abono y la nota del switch también siguen a la tasa
+  if (enUSD) {
+    const elAbono = document.getElementById('doc-abono');
+    if (elAbono) elAbono.textContent = abonoDOP ? formatNum(abono) : '';
+  }
+  actualizarNotaMoneda();
 
   actualizarAvisoFormulas();
 }
@@ -1892,6 +1954,104 @@ function actualizarToggleTasa() {
   const oculta = document.getElementById('documento')?.classList.contains('sin-tasa') || false;
   btn.textContent = oculta ? 'Oculto' : 'Visible';
   btn.className   = `opc-toggle ${oculta ? 'opc-toggle-off' : 'opc-toggle-on'}`;
+}
+
+// =============================================
+//  MONEDA DEL DOCUMENTO (switch encima de la hoja)
+//
+//  El documento tiene una sola lista de precios, en pesos. El switch
+//  cambia la VISTA a dólares: cada importe se divide entre la tasa
+//  activa y los rótulos pasan a US$. Se imprime y se exporta la
+//  versión que este encendida.
+//
+//  Por eso, en dólares los importes son de sólo lectura: se escriben
+//  en pesos y se convierten. Así no hay dos verdades sobre el precio.
+//
+//  La moneda vive en #documento (dataset.moneda) y se guarda con la
+//  cotización.
+// =============================================
+
+function monedaActiva() {
+  return document.getElementById('documento')?.dataset.moneda === 'USD' ? 'USD' : 'DOP';
+}
+
+// Factor para pasar de pesos (lo guardado) a lo que se muestra
+function factorMoneda() {
+  if (monedaActiva() !== 'USD') return 1;
+  const t = typeof TasaCambio !== 'undefined' ? TasaCambio.get() : 0;
+  return t > 0 ? 1 / t : 0;
+}
+
+// Importe tal como se imprime: en dólares se redondea a 2 decimales
+// ANTES de sumar, para que el documento cuadre con lo que se ve.
+function montoMostrado(montoPesos) {
+  const f = factorMoneda();
+  if (f === 1) return montoPesos || 0;
+  return Math.round((montoPesos || 0) * f * 100) / 100;
+}
+
+function simboloMoneda() {
+  return monedaActiva() === 'USD'
+    ? 'US$'
+    : (window.EMPRESA?.fiscal?.simboloMoneda || 'RD$');
+}
+
+function aplicarMoneda(m, rerender = true) {
+  const usd = m === 'USD';
+  const doc = document.getElementById('documento');
+  if (doc) {
+    doc.dataset.moneda = usd ? 'USD' : 'DOP';
+    doc.classList.toggle('doc-usd', usd);
+  }
+
+  // Switch
+  document.getElementById('sm-dop')?.classList.toggle('sm-activa', !usd);
+  document.getElementById('sm-usd')?.classList.toggle('sm-activa',  usd);
+  const lblDop = document.getElementById('sm-lbl-dop');
+  if (lblDop) lblDop.textContent = window.EMPRESA?.fiscal?.simboloMoneda || 'RD$';
+  actualizarNotaMoneda();
+
+  // Rótulos de moneda dentro del documento
+  document.querySelectorAll('#documento .moneda-simbolo')
+    .forEach(el => { el.textContent = simboloMoneda(); });
+  document.querySelectorAll('#documento .moneda-sufijo')
+    .forEach(el => { el.textContent = usd ? ' (US$)' : ''; });
+
+  // El abono se guarda en pesos: se repinta convertido y sólo se
+  // edita en la vista en pesos.
+  const elAbono = document.getElementById('doc-abono');
+  if (elAbono) {
+    elAbono.contentEditable = usd ? 'false' : 'true';
+    elAbono.textContent = cot.abono ? formatNum(montoMostrado(cot.abono)) : '';
+    if (usd) elAbono.title = 'En dólares el abono se calcula con la tasa: escríbelo en pesos';
+    else     elAbono.removeAttribute('title');
+  }
+
+  if (rerender) {
+    renderFilas();          // los importes se repintan convertidos
+    calcularTotales();
+  }
+}
+
+// Aviso del switch: a qué tasa se está convirtiendo
+function actualizarNotaMoneda() {
+  const nota = document.getElementById('sm-nota');
+  if (!nota) return;
+  if (monedaActiva() !== 'USD') { nota.textContent = ''; return; }
+  const t = typeof TasaCambio !== 'undefined' ? TasaCambio.get() : 0;
+  nota.textContent = `a la tasa de ${formatNum(t)} · los precios se escriben en pesos`;
+}
+
+function cambiarMoneda(m) {
+  if (monedaActiva() === m) return;
+  aplicarMoneda(m);
+  TabManager.marcarSinGuardar();
+}
+
+// El switch sólo tiene sentido con un documento abierto
+function mostrarSwitchMoneda(mostrar) {
+  const sw = document.getElementById('switch-moneda');
+  if (sw) sw.style.display = mostrar ? '' : 'none';
 }
 
 // =============================================
@@ -2288,10 +2448,14 @@ function iniciarListenersDocumento() {
   // Adeudado, y al salir queda formateado como el resto de importes.
   const abono = document.getElementById('doc-abono');
   if (abono) {
-    abono.addEventListener('input', calcularTotales);
+    abono.addEventListener('input', () => {
+      // Sólo se escribe en pesos (en dólares la celda no es editable)
+      cot.abono = parseMonto(abono.textContent);
+      calcularTotales();
+    });
     abono.addEventListener('blur', () => {
-      const v = parseMonto(abono.textContent);
-      abono.textContent = v ? formatNum(v) : '';
+      cot.abono = parseMonto(abono.textContent);
+      abono.textContent = cot.abono ? formatNum(cot.abono) : '';
       calcularTotales();
       TabManager.marcarSinGuardar();
     });
@@ -2533,6 +2697,10 @@ async function exportarHTML() {
   const hoja      = leerHoja();
   const anchoHoja = _anchoHojaPx(hoja.hoja, hoja.orientacion);
   const escala    = leerEscalaImpresion();
+  // Se exporta la versión que está activa: los importes ya van
+  // convertidos en las filas, así que el archivo calcula en esa misma
+  // moneda (ver MONEDA en el script embebido).
+  const monedaDoc = monedaActiva();
 
   // Mismo markup que el editor — ver js/plantilla.js
   const documentoHTML = Plantilla.interior({
@@ -2545,12 +2713,14 @@ async function exportarHTML() {
     defectos:  E.defectos,
     logo:      logoSrc,
     tasa:      tasa,
-    filasHTML: Plantilla.filasExport(estado.items, pl)
+    factor:    factorMoneda(),
+    filasHTML: Plantilla.filasExport(estado.items, pl, factorMoneda())
   });
 
   const scriptInline = `(function(){
   var ITBIS=${itbisPct};
   var MARCA=${JSON.stringify(_marcaArchivo())};
+  var MONEDA=${JSON.stringify(monedaDoc)};
   // Mismo motor de fórmulas del editor — ver js/formula.js
   var Formula=${Formula.fuente()};
   function pM(s){return parseFloat(String(s).replace(/[\s,]/g,''))||0;}
@@ -2568,7 +2738,11 @@ async function exportarHTML() {
       var cl=tr.querySelector('[data-field="linea"]');
       if(cl) cl.textContent=fN(tot);
     });
-    var itbs=gr*(ITBIS/100),dop=ex+gr+itbs,usd=tasa>0?dop/tasa:0;
+    // Las celdas ya están en la moneda del documento: el total se
+    // calcula en esa moneda y la otra sale de la tasa.
+    var itbs=gr*(ITBIS/100),tot=ex+gr+itbs;
+    var dop=MONEDA==='USD'?tot*tasa:tot;
+    var usd=MONEDA==='USD'?tot:(tasa>0?tot/tasa:0);
     sT('tot-excento',fN(ex));sT('tot-gravado',fN(gr));sT('tot-itbis',fN(itbs));
     sT('tot-subtotal',fN(gr));sT('tot-suma',fN(gr+itbs));
     sH('tot-dop','<strong>'+fN(dop)+'</strong>');
@@ -2577,9 +2751,9 @@ async function exportarHTML() {
     document.querySelectorAll('.hcl-fila-excento').forEach(function(tr){
       tr.classList.toggle('hcl-oculto', ex <= 0);
     });
-    sT('tot-suma-hcl',fN(dop));
+    sT('tot-suma-hcl',fN(tot));
     var ab=pM((document.getElementById('doc-abono')||{}).innerText||'0');
-    sH('tot-adeudado','<strong>'+fN(dop-ab)+'</strong>');
+    sH('tot-adeudado','<strong>'+fN(tot-ab)+'</strong>');
   };
   window.cambiarTipoDoc=function(v){sT('doc-titulo-texto',v);sT('cli-tipo-doc-texto',v);};
   window.cambiarEtiquetaNcf=function(v){sT('lbl-ncf',(v==='Avance'?'Avance':'NCF')+':');};
@@ -2620,6 +2794,10 @@ async function exportarHTML() {
     if(!est){est=document.createElement('style');est.id='estilo-hoja';document.head.appendChild(est);}
     est.textContent=multi?REGLA_VARIAS:REGLA_UNA;
   });
+  // Rótulos de la moneda con la que se exportó
+  var SIM=MONEDA==='USD'?'US$':${JSON.stringify(E.fiscal?.simboloMoneda || 'RD$')};
+  document.querySelectorAll('.moneda-simbolo').forEach(function(el){el.textContent=SIM;});
+  document.querySelectorAll('.moneda-sufijo').forEach(function(el){el.textContent=MONEDA==='USD'?' (US$)':'';});
   window.calcTotales();
 })();`;
 
@@ -2672,7 +2850,7 @@ body{padding-top:52px!important;background:#DEE6EF;}
 ${_reglaPagina(hoja.hoja, hoja.orientacion)}
   </style>
 </head>
-<body class="${[escala === 'fiel' ? 'impr-fiel' : '', multi ? 'doc-multi-hoja' : ''].filter(Boolean).join(' ')}">
+<body class="${[escala === 'fiel' ? 'impr-fiel' : '', multi ? 'doc-multi-hoja' : '', monedaDoc === 'USD' ? 'doc-usd' : ''].filter(Boolean).join(' ')}">
 <div class="exp-bar">
   <span class="exp-titulo">${escHTML(marca)} &mdash; ${escHTML(numRaw)}</span>
   <div class="exp-btns">

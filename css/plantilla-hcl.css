@@ -3,217 +3,101 @@
    PLANTILLA HERRERA CUSTOMS LOGISTIC
    Se aplica cuando .pagina lleva la clase .pl-hcl.
 
-   Parte del mismo esqueleto que LAPS (logo centrado + caja de datos
-   a la derecha), con tres diferencias de fondo:
-     · la tabla es DESCRIPCION | FECHA DE LLEGADA | PRECIO
-     · la caja del documento lleva CONTENEDOR y PUERTO
-     · el pie de totales termina en Abono + Total Adeudado
+   Comparte la estética de la plantilla clásica (encabezado con logo
+   a la izquierda y título en azul, caja de cliente, tabla de cabecera
+   azul, caja de totales, pie enmarcado): todo eso viene de
+   estilos.css y aquí sólo va lo propio de esta factura.
    ============================================= */
 
 .pl-hcl .hcl-oculto { display: none !important; }
 
-/* El documento entero va dentro de un marco, como en la factura */
-.pl-hcl {
-  border-top: none;
-  padding: 30px 34px 34px;
-}
-.pl-hcl .hcl-marco {
-  border: 1px solid #000;
-}
-.pl-hcl .hcl-cab { padding: 10px 10px 4px; }
+/* -- Encabezado ----------------------------- */
+/* El logo viene recortado y es apaisado (3.3:1): con la altura de la
+   clásica quedaría desproporcionado. */
+.pl-hcl .doc-logo { height: 54px; }
 
-/* ── Cabecera centrada ─────────────────────── */
-.pl-hcl .hcl-cab {
-  text-align: center;
-  margin-bottom: 8px;
-}
-.pl-hcl .hcl-logo {
-  height: 52px;
-  object-fit: contain;
-  /* El PNG trae mucho margen blanco alrededor: se recorta en pantalla
-     para que el logo no empuje toda la factura hacia abajo. */
-  object-position: center;
-  margin-bottom: -6px;
-}
-.pl-hcl .hcl-cab-linea {
-  font-size: 11px;
-  color: #333;
-  line-height: 1.5;
-}
-
-.pl-hcl .linea-azul {
-  height: 10px;
-  background: #1F3864;
-  margin: 6px 0 0;
-}
-
-/* ── Emisor + cliente | caja de datos ─────── */
-.pl-hcl .hcl-bloques {
-  display: flex;
-  align-items: stretch;
-  border-top: 1px solid #000;
-}
-
-.pl-hcl .hcl-emisor {
-  flex: 1;
-  padding: 8px 10px;
-  border-right: 1px solid #000;
-  font-size: 11.5px;
-  line-height: 1.6;
-}
-.pl-hcl .hcl-emisor .empresa-nombre {
+/* "HERRERA CUSTOMS LOGISTIC" es largo: con el ancho y el cuerpo de la
+   clásica se partía en tres líneas y empujaba la factura a una
+   segunda hoja. Se le da más sitio y un cuerpo algo menor. */
+.pl-hcl .enc-izq { max-width: 66%; }
+.pl-hcl .enc-der { min-width: 240px; }
+.pl-hcl .empresa-nombre {
   font-size: 13px !important;
-  font-weight: bold;
-  color: #000 !important;
   letter-spacing: 0;
-  margin-bottom: 2px;
+  white-space: nowrap;
 }
-.pl-hcl .hcl-emisor p { font-size: 11.5px; }
+.pl-hcl .doc-empresa-datos p { font-size: 11.5px; line-height: 1.45; }
+.pl-hcl .doc-titulo-texto { font-size: 21px; letter-spacing: .5px; }
+.pl-hcl .hcl-cab-email { word-break: break-word; }
 
-.pl-hcl .hcl-cliente {
-  margin-top: 16px;
-  border-top: 1px solid #000;
-  padding-top: 8px;
-}
-.pl-hcl .hcl-cli-tit {
-  font-weight: bold;
-  font-size: 12px !important;
-  margin-bottom: 8px;
-}
-.pl-hcl .hcl-cli-nombre .cli-val {
-  font-weight: bold;
-  text-transform: uppercase;
-  min-width: 220px;
-}
-.pl-hcl .cli-val-ancho {
-  min-width: 100%;
-  display: block;
+/* -- Aire vertical --------------------------- */
+/* Esta factura suele traer 12-15 líneas: se aprieta un poco el
+   espaciado (no la tipografía) para que entre en una sola hoja,
+   como la que hacían en Excel. */
+.pl-hcl .encabezado      { margin-bottom: 6px; }
+.pl-hcl .linea-azul      { margin: 8px 0; }
+.pl-hcl .seccion-cliente { padding: 8px 14px; margin-bottom: 10px; }
+.pl-hcl .cli-izq p,
+.pl-hcl .cli-der p       { line-height: 1.5; }
+.pl-hcl .tabla-servicios { margin-bottom: 12px; }
+.pl-hcl .tabla-servicios th { padding: 5px 8px; }
+.pl-hcl .tabla-servicios td { padding: 4px 9px; }
+
+/* -- Caja de cliente ------------------------ */
+/* La dirección del cliente son dos o tres líneas (país, correo, web) */
+.pl-hcl .cli-val-dir {
+  min-width: 340px;
   white-space: pre-wrap;
+  vertical-align: top;
 }
-.pl-hcl .hcl-cliente .cli-label { color: #000; }
-
-/* Caja de datos del documento, en rejilla de dos filas por dato */
-.pl-hcl .hcl-meta {
-  width: 44%;
-  display: grid;
-  grid-template-columns: 1fr;
-  align-content: start;
-  font-size: 11.5px;
-}
-.pl-hcl .hm-cab,
-.pl-hcl .hm-val {
-  padding: 3px 8px;
-  text-align: center;
-  border-bottom: 1px solid #E8A33D;
-  min-height: 21px;
-}
-.pl-hcl .hm-cab {
-  font-weight: bold;
-  border-bottom-color: #000;
-}
-.pl-hcl .hm-fuerte { font-weight: bold; }
-.pl-hcl .hm-valido {
-  font-size: 10.5px;
+.pl-hcl .cli-val-corto { min-width: 60px; }
+.pl-hcl .cli-izq { max-width: 62%; }
+.pl-hcl .cli-der { min-width: 240px; }
+.pl-hcl .hcl-valido {
+  font-size: 11.5px !important;
   font-style: italic;
+  color: #555;
+  margin-top: 4px;
 }
-.pl-hcl .hm-val:last-child { border-bottom: none; }
 
-.pl-hcl .hcl-meta .sel-tipo { margin: 0 auto 2px; }
-.pl-hcl .hcl-meta .doc-numero { border-bottom: none; min-width: 120px; }
-.pl-hcl .hcl-meta .inp-fecha  { text-align: center; border-bottom: none; }
-.pl-hcl .hcl-meta [contenteditable] { min-width: 60px; display: inline-block; }
-
-/* ── Tabla ─────────────────────────────────── */
-.pl-hcl .tabla-hcl {
-  margin-bottom: 0;
-  border-collapse: collapse;
-}
-.pl-hcl .tabla-hcl th {
-  background: #fff;
-  color: #000;
-  border: 1px solid #000;
-  border-top: none;
-  font-weight: normal;
-  font-size: 11.5px;
-  padding: 4px 8px;
-}
-.pl-hcl .tabla-hcl .th-det     { text-align: center !important; }
-.pl-hcl .tabla-hcl .th-llegada { width: 150px; }
-.pl-hcl .tabla-hcl .th-monto   { width: 130px; text-align: center; }
-
-.pl-hcl .tabla-hcl td {
-  border: 1px solid #000;
-  padding: 3px 8px;
-  font-size: 11.5px;
+/* -- Tabla ---------------------------------- */
+/* Columna de fecha de llegada (reutiliza el campo "unidad" de la
+   fila) en lugar de la cantidad */
+.pl-hcl .th-llegada { width: 150px; }
+.pl-hcl .td-llegada {
+  width: 150px;
+  text-align: center;
   vertical-align: middle;
 }
-.pl-hcl .tabla-hcl .td-det     { min-width: 240px; }
-.pl-hcl .tabla-hcl .td-llegada { text-align: center; }
-.pl-hcl .tabla-hcl .td-monto   { text-align: right; font-weight: normal; }
-.pl-hcl .tabla-hcl .td-tipo,
-.pl-hcl .tabla-hcl .td-del     { border: none; }
+.pl-hcl .td-num { width: 34px; }
 
-/* ── Totales ───────────────────────────────── */
-.pl-hcl .hcl-pie {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 0;
-}
-.pl-hcl .hcl-tot { min-width: 360px; margin-left: auto; }
-
-.pl-hcl .tabla-totales-hcl { font-size: 11.5px; }
-.pl-hcl .tabla-totales-hcl td {
-  border: 1px solid #000;
-  border-top: none;
-  padding: 3px 8px;
-}
-.pl-hcl .tabla-totales-hcl .tot-label {
+/* -- Totales -------------------------------- */
+/* El abono se escribe a mano: se marca como editable en pantalla y
+   sale limpio al imprimir. */
+.pl-hcl .tot-val-edit { text-align: right; }
+.pl-hcl .tot-val-edit [contenteditable] {
+  display: inline-block;
+  min-width: 70px;
   text-align: right;
-  font-weight: normal;
-  border-left: none;
-  border-right: none;
+  border-bottom: 1px dashed #bbb;
+  cursor: text;
 }
-.pl-hcl .tabla-totales-hcl .tot-signo { width: 18px; text-align: left; }
-.pl-hcl .tabla-totales-hcl .tot-val   { width: 130px; text-align: right; }
-
-.pl-hcl .tot-fila-abono .tot-val-edit { background: #FFFDF5; }
-/* En la factura el Total Adeudado va en negrita, sin fondo */
-.pl-hcl .hcl-adeudado td { background: none; }
-.pl-hcl .hcl-adeudado .tot-label,
-.pl-hcl .hcl-adeudado .tot-val { font-weight: bold; }
-
-/* ── Nota y firmas ─────────────────────────── */
-.pl-hcl .hcl-nota {
-  margin-top: 22px;
-  min-height: 34px;
-  border: none;
-  font-size: 11.5px;
-  white-space: pre-wrap;
+.pl-hcl .tot-val-edit [contenteditable]:focus {
+  outline: none;
+  background: #FFF9D6;
+  border-radius: 2px;
 }
 
-.pl-hcl .hcl-firmas {
-  display: flex;
-  gap: 40px;
-  margin-top: 18px;
-  padding-top: 6px;
-  border-top: 1px solid #000;
-  font-size: 11.5px;
-  font-weight: bold;
-}
-.pl-hcl .hcl-firmas .laps-firma { flex: 1; }
+/* -- Pie de firmas -------------------------- */
+.pl-hcl .pago-head .cli-val { min-width: 180px; }
 .pl-hcl .hcl-firma-espacio {
-  min-height: 46px;
-  border: none;
+  min-height: 40px;
+  border-bottom: 1px solid var(--gris-borde, #C8C8C8);
 }
 
-/* ── Impresión ─────────────────────────────── */
+/* -- Impresión ------------------------------ */
 @media print {
-  .pl-hcl .hcl-meta .inp-fecha { border: none !important; }
-  .pl-hcl .th-tipo,
-  .pl-hcl .td-tipo,
-  .pl-hcl .th-del,
-  .pl-hcl .td-del { display: none !important; }
-  .pl-hcl .tot-fila-abono .tot-val-edit { background: none !important; }
+  .pl-hcl .tot-val-edit [contenteditable] { border-bottom: none !important; }
+  .pl-hcl .hcl-firma-espacio { min-height: 44px; }
 }
-
-body.vista-impresion .pl-hcl .tot-fila-abono .tot-val-edit { background: none !important; }
+body.vista-impresion .pl-hcl .tot-val-edit [contenteditable] { border-bottom: none !important; }

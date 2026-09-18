@@ -74,13 +74,21 @@ Objeto global `window.EMPRESA` con toda la información de la empresa. Es el ún
 |---|---|---|
 | `clasica` | Juanytours | Logo a la izquierda, columnas Cant./Detalles/Cantidad/Monto, totales con excento/gravado y conversión a USD |
 | `laps` | LAPS | Logo centrado, caja de datos a la derecha, columnas UD. M y TOTAL por línea, datos bancarios en texto y pie de firmas |
-| `hcl` | Herrera Customs | Marco alrededor de todo el documento, columnas DESCRIPCION / FECHA DE LLEGADA / PRECIO, CONTENEDOR y PUERTO en la caja de datos, y pie de totales con **Abono** y **Total Adeudado** |
+| `hcl` | Herrera Customs | **Misma estética que la clásica** (encabezado con logo a la izquierda y título en azul, caja de cliente, cabecera de tabla azul, caja de totales, pie enmarcado) con sus datos: columna FECHA DE LLEGADA en vez de cantidad, CONTENEDOR / PUERTO / código de cliente, y pie de totales con **Abono** y **Total Adeudado** |
 
 Cada una es una función en [`js/plantilla.js`](js/plantilla.js) (`interiorClasica`, `interiorLaps`,
 `interiorHcl`) y su hoja de estilos se activa con la clase `.pl-<valor>` que `montarDocumento()`
 pone en `#documento`.
 
-**Particularidades de la plantilla Herrera** (reproducen su factura):
+La plantilla Herrera **no** reproduce el aspecto del Excel del que venía (bordes negros,
+tipografía menuda): reusa las clases de la clásica (`.encabezado`, `.seccion-cliente`,
+`.tabla-servicios`, `.tabla-totales`, `.seccion-pago`) y por eso
+[`css/plantilla-hcl.css`](css/plantilla-hcl.css) es corto — sólo lleva lo propio: el ancho del
+bloque de empresa, la columna de fecha de llegada, el abono editable, el espacio de firmas y un
+espaciado vertical algo más apretado para que la factura de 12–15 líneas siga entrando en una
+sola hoja.
+
+**Particularidades de la plantilla Herrera:**
 
 - **Sin columna de cantidad**: se factura por precio, la cantidad queda en 1. La columna
   *FECHA DE LLEGADA* reutiliza el campo `unidad` de la fila, así que no hubo que tocar el
@@ -393,6 +401,8 @@ importes de las filas elegidas — un aumento a media cotización sin tocar celd
 
 - **Ajuste**: `+10%`, `-5%`, `*1.18`, `/2`, `+250`. Sin signo delante se entiende que suma.
   Hay chips con los ajustes más usados.
+- **Moneda**: los ajustes y la vista previa siempre operan en pesos dominicanos (RD$).
+  En vista dólares, el modal lo avisa desde que se abre: `+250` suma RD$250 a cada importe.
 - **Desde / hasta la fila**: dos selectores con las filas numeradas como en la tabla (las
   notas no cuentan; las filas ocultas se marcan `· oculta`). Si el rango va al revés, se endereza.
 - **Vista previa**: cada fila afectada con su `viejo → nuevo`, más la suma de las filas

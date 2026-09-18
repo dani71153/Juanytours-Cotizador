@@ -1250,13 +1250,14 @@ function renderFilas() {
     if (fila.type === 'item' && fila.visible === false) tr.classList.add('fila-oculta');
     const isFirst = idx === 0;
     const isLast  = idx === cot.items.length - 1;
-    const btnOrden = `
-      <span class="fila-seleccion-controles">
+    const celdaSeleccion = `
+      <td class="td-seleccion no-print">
         <input type="checkbox" class="seleccionar-fila" aria-label="Seleccionar fila ${idx + 1}"
                title="Selecciona una o varias filas para arrastrarlas juntas"
                onchange="seleccionarFila(${fila.id}, this.checked)" />
+      </td>`;
+    const btnOrden = `
         <span class="arrastrar-fila" draggable="true" title="Arrastra para mover las filas seleccionadas" aria-hidden="true">⠿</span>
-      </span>
       <button class="btn-mover" onclick="moverFila(${fila.id},-1)" ${isFirst ? 'disabled' : ''} title="Subir">&#8593;</button>
       <button class="btn-mover" onclick="moverFila(${fila.id}, 1)" ${isLast  ? 'disabled' : ''} title="Bajar">&#8595;</button>`;
 
@@ -1264,6 +1265,7 @@ function renderFilas() {
     if (fila.type === 'nota') {
       tr.className = 'tr-nota';
       tr.innerHTML = `
+        ${celdaSeleccion}
         <td class="td-nota" colspan="${columnas}" contenteditable="true"
             data-field="texto"
             data-placeholder="Escribe aquí la nota o aclaración..."
@@ -1302,6 +1304,7 @@ function renderFilas() {
       const textoF = (evalF && !evalF.ok) ? escHTML(fila.formula)
                                           : formatNum(montoMostrado(fila.monto));
       tr.innerHTML = `
+        ${celdaSeleccion}
         ${celdaNum}
         <td class="td-det" contenteditable="true" data-field="desc"
             data-placeholder="Descripción del servicio&#10;(puede ser multilínea)"
@@ -1355,7 +1358,7 @@ function renderFilas() {
   for (let x = total; x < 3; x++) {
     const tr2 = document.createElement('tr');
     tr2.className = 'tr-vacio';
-    tr2.innerHTML = '<td></td>'.repeat(columnas);
+    tr2.innerHTML = '<td class="td-seleccion no-print"></td>' + '<td></td>'.repeat(columnas);
     tbody.appendChild(tr2);
   }
 }

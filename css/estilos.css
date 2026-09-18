@@ -418,13 +418,16 @@ body.vista-impresion .td-monto.formula-error { background: none !important; colo
   vertical-align: middle;
 }
 
-.fila-seleccion-controles {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
+.tabla-servicios .th-seleccion,
+.tabla-servicios .td-seleccion {
+  width: 26px;
+  padding: 4px;
+  text-align: center;
+  vertical-align: middle;
 }
 .seleccionar-fila { margin: 0; cursor: pointer; accent-color: #0F766E; }
+body.vista-impresion #documento .th-seleccion,
+body.vista-impresion #documento .td-seleccion { display: none !important; }
 .arrastrar-fila {
   display: inline-block;
   padding: 3px;

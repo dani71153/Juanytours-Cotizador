@@ -240,7 +240,7 @@ ${cLinea}        <td class="td-tipo no-print">
     <table class="tabla-servicios">
       <thead>
         <tr>
-          <th class="th-num">Cant.</th>
+${editor ? '          <th class="th-seleccion no-print" aria-label="Selección de filas"></th>\n' : ''}          <th class="th-num">Cant.</th>
           <th class="th-det">Detalles</th>
           <th class="th-cantidad">Cantidad</th>
           <th class="th-monto" title="Acepta f&oacute;rmulas: 1500+1500*10%, 1500+10%, (120+30)*2">Monto<span class="moneda-sufijo"></span></th>
@@ -395,7 +395,7 @@ ${editor ? '          <span id="tasa-indicador" class="tasa-indicador tasa-ind-o
     <table class="tabla-servicios tabla-laps">
       <thead>
         <tr>
-          <th class="th-num" id="laps-numero-item"${e.ocultar?.numerar === false ? '' : ' hidden'}>N.º</th>
+${editor ? '          <th class="th-seleccion no-print" aria-label="Selección de filas"></th>\n' : ''}          <th class="th-num" id="laps-numero-item"${e.ocultar?.numerar === false ? '' : ' hidden'}>N.º</th>
           <th class="th-det">DESCRIPCI&Oacute;N</th>
           <th class="th-unidad">UD. M</th>
           <th class="th-cantidad">CANTIDAD</th>
@@ -589,7 +589,7 @@ ${bancoHTML}
     <table class="tabla-servicios tabla-hcl">
       <thead>
         <tr>
-          <th class="th-num">#</th>
+${editor ? '          <th class="th-seleccion no-print" aria-label="Selección de filas"></th>\n' : ''}          <th class="th-num">#</th>
           <th class="th-det">DESCRIPCI&Oacute;N</th>
           <th class="th-llegada">FECHA DE LLEGADA</th>
           <th class="th-monto" title="Acepta f&oacute;rmulas: 1500+1500*10%, 1500+10%, (120+30)*2">PRECIO (<span class="moneda-simbolo">${esc(simbolo)}</span>)</th>

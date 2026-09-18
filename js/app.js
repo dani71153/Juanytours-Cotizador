@@ -15,6 +15,8 @@ const cot = {
 };
 
 let contadorFilas = 0;
+const filasSeleccionadas = new Set();
+let arrastreFilas = null;
 
 // =============================================
 //  INIT
@@ -497,6 +499,8 @@ function aplicarPresetTotales(preset) {
 // Refresca el texto/color de todos los botones del modal
 function actualizarTogglesOpciones() {
   const vis = leerOpcionesVis();
+  const numerar = document.getElementById('opc-numerar');
+  if (numerar) numerar.checked = !vis.numerar;
   OPC_VIS.forEach(k => {
     const btn = document.getElementById('opc-toggle-' + k);
     if (!btn) return;
@@ -765,6 +769,8 @@ function capturarEstado() {
 
 // Aplica un estado guardado al editor
 function restaurarEstado(datos) {
+  filasSeleccionadas.clear();
+  limpiarArrastreFilas();
   setCE('doc-numero', datos.numero || '');
   setCE('doc-ref',    datos.ref    || '');
   setCE('doc-cliente',datos.cliente|| '');
@@ -822,6 +828,8 @@ function restaurarEstado(datos) {
 // Inicializa una cotización en blanco (nueva pestaña)
 // numero: si ya fue generado por nuevaTab(), úsalo directamente para no incrementar el contador dos veces
 function iniciarEstadoVacio(numero = null) {
+  filasSeleccionadas.clear();
+  limpiarArrastreFilas();
   const d = window._DEFAULTS || {};
   const num = numero || _generarNumero();
 
@@ -1134,6 +1142,7 @@ function eliminarFila(id) {
 }
 
 function moverFila(id, dir) {
+  _syncItemsDesdeDOM();
   const idx = cot.items.findIndex(f => f.id === id);
   if (idx === -1) return;
   const nuevoIdx = idx + dir;
@@ -1144,7 +1153,83 @@ function moverFila(id, dir) {
   TabManager.marcarSinGuardar();
 }
 
+function seleccionarFila(id, seleccionada) {
+  if (seleccionada) filasSeleccionadas.add(id);
+  else filasSeleccionadas.delete(id);
+  pintarSeleccionFilas();
+}
+
+function pintarSeleccionFilas() {
+  document.querySelectorAll('#tabla-body tr[data-id]').forEach(tr => {
+    const seleccionada = filasSeleccionadas.has(Number(tr.dataset.id));
+    tr.classList.toggle('fila-seleccionada', seleccionada);
+    const casilla = tr.querySelector('.seleccionar-fila');
+    if (casilla) casilla.checked = seleccionada;
+  });
+}
+
+function limpiarArrastreFilas() {
+  arrastreFilas = null;
+  document.querySelectorAll('#tabla-body .soltar-antes, #tabla-body .soltar-despues')
+    .forEach(tr => tr.classList.remove('soltar-antes', 'soltar-despues'));
+}
+
+function reordenarFilas(ids, destino, despues) {
+  if (ids.has(destino)) return;
+  _syncItemsDesdeDOM();
+  const movidas = cot.items.filter(f => ids.has(f.id));
+  const restantes = cot.items.filter(f => !ids.has(f.id));
+  const indice = restantes.findIndex(f => f.id === destino);
+  if (!movidas.length || indice < 0) return;
+  restantes.splice(indice + (despues ? 1 : 0), 0, ...movidas);
+  cot.items = restantes;
+  renderFilas();
+  calcularTotales();
+  TabManager.marcarSinGuardar();
+}
+
+function engancharArrastreFila(tr, id) {
+  const asa = tr.querySelector('.arrastrar-fila');
+  asa.addEventListener('dragstart', ev => {
+    _syncItemsDesdeDOM();
+    if (!filasSeleccionadas.has(id)) {
+      filasSeleccionadas.clear();
+      filasSeleccionadas.add(id);
+    }
+    pintarSeleccionFilas();
+    arrastreFilas = new Set(filasSeleccionadas);
+    ev.dataTransfer.effectAllowed = 'move';
+    ev.dataTransfer.setData('text/plain', `${arrastreFilas.size} fila(s)`);
+  });
+  asa.addEventListener('dragend', limpiarArrastreFilas);
+  tr.addEventListener('dragover', ev => {
+    if (!arrastreFilas) return;
+    ev.preventDefault();
+    document.querySelectorAll('#tabla-body .soltar-antes, #tabla-body .soltar-despues')
+      .forEach(f => f.classList.remove('soltar-antes', 'soltar-despues'));
+    if (arrastreFilas.has(id)) { ev.dataTransfer.dropEffect = 'none'; return; }
+    ev.dataTransfer.dropEffect = 'move';
+    const rect = tr.getBoundingClientRect();
+    tr.classList.add(ev.clientY < rect.top + rect.height / 2 ? 'soltar-antes' : 'soltar-despues');
+  });
+  tr.addEventListener('dragleave', ev => {
+    if (!tr.contains(ev.relatedTarget)) tr.classList.remove('soltar-antes', 'soltar-despues');
+  });
+  tr.addEventListener('drop', ev => {
+    if (!arrastreFilas) return;
+    ev.preventDefault();
+    const ids = arrastreFilas;
+    const rect = tr.getBoundingClientRect();
+    const despues = ev.clientY >= rect.top + rect.height / 2;
+    limpiarArrastreFilas();
+    reordenarFilas(ids, id, despues);
+  });
+}
+
 function renderFilas() {
+  for (const id of filasSeleccionadas) {
+    if (!cot.items.some(f => f.id === id)) filasSeleccionadas.delete(id);
+  }
   const tbody = document.getElementById('tabla-body');
   tbody.innerHTML = '';
   let numItem = 0;
@@ -1166,6 +1251,12 @@ function renderFilas() {
     const isFirst = idx === 0;
     const isLast  = idx === cot.items.length - 1;
     const btnOrden = `
+      <span class="fila-seleccion-controles">
+        <input type="checkbox" class="seleccionar-fila" aria-label="Seleccionar fila ${idx + 1}"
+               title="Selecciona una o varias filas para arrastrarlas juntas"
+               onchange="seleccionarFila(${fila.id}, this.checked)" />
+        <span class="arrastrar-fila" draggable="true" title="Arrastra para mover las filas seleccionadas" aria-hidden="true">⠿</span>
+      </span>
       <button class="btn-mover" onclick="moverFila(${fila.id},-1)" ${isFirst ? 'disabled' : ''} title="Subir">&#8593;</button>
       <button class="btn-mover" onclick="moverFila(${fila.id}, 1)" ${isLast  ? 'disabled' : ''} title="Bajar">&#8595;</button>`;
 
@@ -1252,7 +1343,10 @@ function renderFilas() {
     }
 
     tbody.appendChild(tr);
+    engancharArrastreFila(tr, fila.id);
   });
+
+  pintarSeleccionFilas();
 
   actualizarAvisoFormulas();
 

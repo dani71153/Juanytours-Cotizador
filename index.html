@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Cotizador — Juanytours</title>
-  <link rel="stylesheet" href="css/estilos.css?v=40" />
+  <link rel="stylesheet" href="css/estilos.css?v=43" />
   <link rel="stylesheet" href="css/biblioteca.css?v=40" />
   <link rel="stylesheet" href="css/plantilla-laps.css?v=40" />
   <link rel="stylesheet" href="css/plantilla-hcl.css?v=40" />
@@ -373,12 +373,18 @@
             <p class="opc-explica">Cambia solo el r&oacute;tulo de esta cotizaci&oacute;n: usa C&Eacute;DULA cuando el cliente sea una persona f&iacute;sica.</p>
           </div>
 
+          <div class="opc-seccion opc-solo-laps">
+            <div class="opc-sec-titulo">Tabla de servicios</div>
+            <label class="opc-item" for="opc-numerar">
+              <span class="opc-item-label">Numerar ítems</span>
+              <input type="checkbox" id="opc-numerar" onchange="toggleOpcion('numerar')"
+                     aria-describedby="opc-numerar-ayuda" />
+            </label>
+            <p class="opc-explica" id="opc-numerar-ayuda">Agrega una columna N.º al inicio de la tabla, del 1 al último ítem.</p>
+          </div>
+
           <div class="opc-seccion">
             <div class="opc-sec-titulo">Pie del documento</div>
-            <div class="opc-item opc-solo-laps">
-              <span>Numeración de ítems (1, 2, 3…)</span>
-              <button class="opc-toggle opc-toggle-off" id="opc-toggle-numerar" onclick="toggleOpcion('numerar')">Oculto</button>
-            </div>
             <div class="opc-item opc-solo-laps">
               <span class="opc-item-label">Firmas y recuadro inferior</span>
               <button class="opc-toggle opc-toggle-on" id="opc-toggle-firmas" onclick="toggleOpcion('firmas')">Visible</button>
@@ -581,6 +587,6 @@
   <script src="permanencia/borrador.js?v=40"></script>
   <script src="js/formula.js?v=40"></script>
   <script src="js/plantilla.js?v=41"></script>
-  <script src="js/app.js?v=41"></script>
+  <script src="js/app.js?v=43"></script>
 </body>
 </html>

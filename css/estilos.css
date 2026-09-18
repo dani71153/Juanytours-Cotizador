@@ -412,10 +412,27 @@ body.vista-impresion .td-monto.formula-error { background: none !important; colo
   vertical-align: middle;
 }
 
-.td-del {
-  width: 32px;
+.tabla-servicios .th-del,
+.tabla-servicios .td-del {
+  width: 80px;
+  padding: 4px;
   text-align: center;
   vertical-align: middle;
+  white-space: nowrap;
+}
+.td-del .arrastrar-fila,
+.td-del .btn-mover,
+.td-del .btn-eliminar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 22px;
+  padding: 0;
+  vertical-align: middle;
+}
+.td-del .arrastrar-fila {
+  font-size: 17px;
 }
 
 .tabla-servicios .th-seleccion,

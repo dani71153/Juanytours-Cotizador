@@ -605,26 +605,23 @@ ${editor ? '          <th class="th-del  no-print"></th>\n' : ''}        </tr>
       </div>
       <div class="tot-der">
         <table class="tabla-totales tabla-totales-hcl">
-          <!-- Excento sólo aparece si hay líneas sin ITEBIS: así, cuando
-               todo va gravado (lo normal aquí), el pie sale como su
-               factura. Lo enciende calcularTotales(). -->
-          <tr class="tot-fila-excento hcl-fila-excento hcl-oculto">
+          <tr class="tot-fila-excento">
             <td class="tot-label">TOTAL EXCENTO</td>
             <td class="tot-signo">$</td>
             <td class="tot-val" id="tot-excento">0.00</td>
           </tr>
-          <tr class="tot-fila-subtotal">
-            <td class="tot-label">SUBTOTAL</td>
+          <tr class="tot-fila-gravado">
+            <td class="tot-label">TOTAL GRAVADO</td>
             <td class="tot-signo">$</td>
-            <td class="tot-val" id="tot-subtotal">0.00</td>
+            <td class="tot-val" id="tot-gravado">0.00</td>
           </tr>
           <tr class="tot-fila-itbis">
-            <td class="tot-label">${esc(etqItbis)} <span id="doc-itbis-pct">${itbisPct}</span>%</td>
+            <td class="tot-label">ITBIS <span id="doc-itbis-pct">${itbisPct}</span>%</td>
             <td class="tot-signo">$</td>
             <td class="tot-val" id="tot-itbis">0.00</td>
           </tr>
           <tr class="tot-fila-dop">
-            <td class="tot-label"><strong>TOTAL ${esc(etqItbis)} + SUBTOTAL</strong></td>
+            <td class="tot-label"><strong>TOTAL <span class="moneda-simbolo">${esc(simbolo)}</span></strong></td>
             <td class="tot-signo"><strong>$</strong></td>
             <td class="tot-val" id="tot-suma-hcl"><strong>0.00</strong></td>
           </tr>
@@ -633,7 +630,7 @@ ${editor ? '          <th class="th-del  no-print"></th>\n' : ''}        </tr>
             <td class="tot-signo">$</td>
             <td class="tot-val tot-val-edit"><span contenteditable="true" id="doc-abono" data-placeholder="0.00">${esc(abonoTxt)}</span></td>
           </tr>
-          <tr class="tot-fila-usd hcl-adeudado">
+          <tr class="hcl-adeudado">
             <td class="tot-label"><strong>TOTAL ADEUDADO</strong></td>
             <td class="tot-signo"><strong>$</strong></td>
             <td class="tot-val" id="tot-adeudado"><strong>0.00</strong></td>

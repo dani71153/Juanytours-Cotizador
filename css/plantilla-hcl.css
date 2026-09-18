@@ -107,6 +107,7 @@
 /* El abono se escribe a mano: se marca como editable en pantalla y
    sale limpio al imprimir. */
 .pl-hcl .tot-val-edit { text-align: right; }
+.pl-hcl .hcl-adeudado { background: #E2EFDA; }
 .pl-hcl .tot-val-edit [contenteditable] {
   display: inline-block;
   min-width: 70px;

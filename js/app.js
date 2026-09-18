@@ -449,7 +449,7 @@ function restablecerEmpresaOpciones() {
 //  documento: se atenúa en pantalla y desaparece
 //  al imprimir / exportar. El dato nunca se borra.
 // =============================================
-const OPC_VIS = ['tasa', 'numero', 'ref', 'ncf', 'excento', 'gravado', 'itbis', 'dop', 'usd', 'iban', 'swift', 'firmas', 'notas'];
+const OPC_VIS = ['tasa', 'numero', 'ref', 'ncf', 'excento', 'gravado', 'itbis', 'dop', 'usd', 'iban', 'swift', 'firmas', 'notas', 'numerar'];
 
 // Lee el estado de visibilidad actual desde las clases del documento
 function leerOpcionesVis() {
@@ -464,13 +464,16 @@ function aplicarOpcionesVis(ocultar) {
   const doc = document.getElementById('documento');
   if (!doc) return;
   const o = ocultar || {};
-  OPC_VIS.forEach(k => doc.classList.toggle('sin-' + k, !!o[k]));
+  OPC_VIS.forEach(k => doc.classList.toggle('sin-' + k, k === 'numerar' ? o[k] !== false : !!o[k]));
+  renderFilas();
 }
 
 function toggleOpcion(clave) {
   const doc = document.getElementById('documento');
   if (!doc || !OPC_VIS.includes(clave)) return;
+  if (clave === 'numerar') _syncItemsDesdeDOM();
   doc.classList.toggle('sin-' + clave);
+  if (clave === 'numerar') renderFilas();
   actualizarTogglesOpciones();
   TabManager.marcarSinGuardar();
 }
@@ -1149,6 +1152,10 @@ function renderFilas() {
   // Qué columnas tiene la tabla depende de la plantilla de la empresa
   const laps = Perfiles.plantilla() === 'laps';
   const hcl  = Perfiles.plantilla() === 'hcl';
+  const numerar = laps && !leerOpcionesVis().numerar;
+  const columnas = laps ? (numerar ? 6 : 5) : 4;
+  const encabezadoNum = document.getElementById('laps-numero-item');
+  if (encabezadoNum) encabezadoNum.hidden = !numerar;
   // Los importes sólo se editan en pesos: en dólares son la conversión
   const editable = monedaActiva() !== 'USD';
 
@@ -1166,7 +1173,7 @@ function renderFilas() {
     if (fila.type === 'nota') {
       tr.className = 'tr-nota';
       tr.innerHTML = `
-        <td class="td-nota" colspan="${laps ? 5 : 4}" contenteditable="true"
+        <td class="td-nota" colspan="${columnas}" contenteditable="true"
             data-field="texto"
             data-placeholder="Escribe aquí la nota o aclaración..."
         >${escHTML(fila.texto)}</td>
@@ -1180,7 +1187,7 @@ function renderFilas() {
 
     } else {
       numItem++;
-      const celdaNum    = laps ? '' : `<td class="td-num">${numItem}</td>`;
+      const celdaNum    = laps && !numerar ? '' : `<td class="td-num">${numItem}</td>`;
       const celdaUnidad = laps
         ? `<td class="td-unidad" contenteditable="true" data-field="unidad"
                data-placeholder="UNIDAD">${escHTML(fila.unidad || 'UNIDAD')}</td>`
@@ -1254,9 +1261,34 @@ function renderFilas() {
   for (let x = total; x < 3; x++) {
     const tr2 = document.createElement('tr');
     tr2.className = 'tr-vacio';
-    tr2.innerHTML = '<td></td>'.repeat(laps ? 5 : 4);
+    tr2.innerHTML = '<td></td>'.repeat(columnas);
     tbody.appendChild(tr2);
   }
+}
+
+function redondearImportes() {
+  if (monedaActiva() === 'USD') {
+    mostrarToast('Cambia a pesos para redondear los precios base.', true);
+    return;
+  }
+  _syncItemsDesdeDOM();
+  const items = cot.items.filter(f => f.type === 'item');
+  if (!items.length) {
+    mostrarToast('Agrega un servicio para redondear su precio.', true);
+    return;
+  }
+  if (items.some(f => !Number.isFinite(f.monto) || (f.formula && !Formula.evaluar(f.formula).ok))) {
+    mostrarToast('Corrige las fórmulas inválidas antes de redondear.', true);
+    return;
+  }
+  items.forEach(f => {
+    f.monto = Math.round(f.monto);
+    f.formula = '';
+  });
+  renderFilas();
+  calcularTotales();
+  TabManager.marcarSinGuardar();
+  mostrarToast('Precios redondeados al entero más cercano.');
 }
 
 function actualizarFila(id, campo, valor) {
@@ -2714,7 +2746,7 @@ async function exportarHTML() {
     logo:      logoSrc,
     tasa:      tasa,
     factor:    factorMoneda(),
-    filasHTML: Plantilla.filasExport(estado.items, pl, factorMoneda())
+    filasHTML: Plantilla.filasExport(estado.items, pl, factorMoneda(), !estado.ocultar.numerar)
   });
 
   const scriptInline = `(function(){

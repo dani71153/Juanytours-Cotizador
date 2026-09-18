@@ -78,13 +78,13 @@
   // plantilla 'laps' agrega la columna UD. M y el total por línea.
   //  factor: 1 en pesos, 1/tasa cuando el documento está en dólares.
   //  Se redondea a dos decimales por fila, que es lo que se imprime.
-  function filasExport(items, plantilla, factor) {
+  function filasExport(items, plantilla, factor, numerar = false) {
     const laps = plantilla === 'laps';
     const hcl  = plantilla === 'hcl';
     const f    = factor || 1;
     const conv = v => (f === 1 ? (v || 0) : Math.round((v || 0) * f * 100) / 100);
     // Columnas visibles: HCL no lleva cantidad ni total por línea
-    const cols = laps ? 5 : 4;
+    const cols = laps ? (numerar ? 6 : 5) : 4;
     let html = '', numItem = 0;
     (items || []).forEach(f => {
       if (f.type === 'nota') {
@@ -102,7 +102,7 @@
         // para poder seguir editándola en el archivo exportado.
         const fmla    = f.formula || '';
         const attrF   = fmla ? ` data-formula="${esc(fmla).replace(/"/g, '&quot;')}" title="F&oacute;rmula: ${esc(fmla).replace(/"/g, '&quot;')}"` : '';
-        const cNum    = laps ? '' : `        <td class="td-num">${numItem}</td>\n`;
+        const cNum    = laps && !numerar ? '' : `        <td class="td-num">${numItem}</td>\n`;
         const cUnidad = laps ? `        <td class="td-unidad" contenteditable="true" data-field="unidad" data-placeholder="UNIDAD">${esc(f.unidad || 'UNIDAD')}</td>\n`
                       : hcl  ? `        <td class="td-llegada" contenteditable="true" data-field="unidad" data-placeholder=" ">${esc(f.unidad || '')}</td>\n`
                       : '';
@@ -121,7 +121,7 @@ ${cLinea}        <td class="td-tipo no-print">
       }
     });
     const totalItems = (items || []).filter(f => f.type === 'item').length;
-    const celdas = laps ? 6 : 5;
+    const celdas = cols + 1;
     for (let x = totalItems; x < 3; x++) {
       html += `      <tr class="tr-vacio">${'<td></td>'.repeat(celdas)}</tr>\n`;
     }
@@ -395,6 +395,7 @@ ${editor ? '          <span id="tasa-indicador" class="tasa-indicador tasa-ind-o
     <table class="tabla-servicios tabla-laps">
       <thead>
         <tr>
+          <th class="th-num" id="laps-numero-item"${e.ocultar?.numerar === false ? '' : ' hidden'}>N.º</th>
           <th class="th-det">DESCRIPCI&Oacute;N</th>
           <th class="th-unidad">UD. M</th>
           <th class="th-cantidad">CANTIDAD</th>

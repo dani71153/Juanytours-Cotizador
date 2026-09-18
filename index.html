@@ -30,6 +30,8 @@
       <button class="btn-ctrl btn-nota"     onclick="agregarNota()">&#43; Nota</button>
       <button class="btn-ctrl btn-ajustar"  onclick="abrirModalAjuste()"
               title="Aplicar un aumento o descuento a los importes, desde la fila que elijas">&#37; Ajustar</button>
+      <button class="btn-ctrl btn-ajustar" onclick="redondearImportes()"
+              title="Redondear los precios en pesos al entero más cercano. Las fórmulas se sustituyen por su resultado redondeado.">&#8776; Redondear</button>
       <!-- Aparece solo si el documento tiene importes con fórmula -->
       <button class="chip-formulas" id="chip-formulas" style="display:none"
               onclick="abrirModalFormulas()"></button>
@@ -374,6 +376,10 @@
           <div class="opc-seccion">
             <div class="opc-sec-titulo">Pie del documento</div>
             <div class="opc-item opc-solo-laps">
+              <span>Numeración de ítems (1, 2, 3…)</span>
+              <button class="opc-toggle opc-toggle-off" id="opc-toggle-numerar" onclick="toggleOpcion('numerar')">Oculto</button>
+            </div>
+            <div class="opc-item opc-solo-laps">
               <span class="opc-item-label">Firmas y recuadro inferior</span>
               <button class="opc-toggle opc-toggle-on" id="opc-toggle-firmas" onclick="toggleOpcion('firmas')">Visible</button>
             </div>
@@ -574,7 +580,7 @@
   <script src="permanencia/sesion.js?v=40"></script>
   <script src="permanencia/borrador.js?v=40"></script>
   <script src="js/formula.js?v=40"></script>
-  <script src="js/plantilla.js?v=40"></script>
-  <script src="js/app.js?v=40"></script>
+  <script src="js/plantilla.js?v=41"></script>
+  <script src="js/app.js?v=41"></script>
 </body>
 </html>

@@ -36,7 +36,7 @@
    como la que hacían en Excel. */
 .pl-hcl .encabezado      { margin-bottom: 6px; }
 .pl-hcl .linea-azul      { margin: 8px 0; }
-.pl-hcl .seccion-cliente { padding: 8px 14px; margin-bottom: 10px; }
+.pl-hcl .seccion-cliente { padding: 12px 14px; margin-bottom: 10px; }
 .pl-hcl .cli-izq p,
 .pl-hcl .cli-der p       { line-height: 1.5; }
 .pl-hcl .tabla-servicios { margin-bottom: 12px; }
@@ -44,20 +44,52 @@
 .pl-hcl .tabla-servicios td { padding: 4px 9px; }
 
 /* -- Caja de cliente ------------------------ */
-/* La dirección del cliente son dos o tres líneas (país, correo, web) */
-.pl-hcl .cli-val-dir {
-  min-width: 340px;
-  white-space: pre-wrap;
-  vertical-align: top;
+/* Dos columnas acotadas: los campos crecen en altura sin invadir
+   los datos fiscales, también al imprimir y exportar. */
+.pl-hcl .seccion-cliente {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+  gap: 24px;
 }
-.pl-hcl .cli-val-corto { min-width: 60px; }
-.pl-hcl .cli-izq { max-width: 62%; }
-.pl-hcl .cli-der { min-width: 240px; }
+.pl-hcl .cli-izq,
+.pl-hcl .cli-der { min-width: 0; max-width: none; }
+.pl-hcl .cli-izq p,
+.pl-hcl .cli-der p {
+  margin: 0;
+  min-height: 20px;
+}
+.pl-hcl .cli-izq p + p,
+.pl-hcl .cli-der p + p { margin-top: 4px; }
+.pl-hcl .cli-izq p {
+  display: grid;
+  grid-template-columns: 78px minmax(0, 1fr);
+  gap: 8px;
+  align-items: baseline;
+}
+.pl-hcl .cli-der {
+  text-align: left;
+  border-left: 1px solid var(--gris-borde);
+  padding-left: 18px;
+}
+.pl-hcl .cli-der p:has(.cli-label) {
+  display: grid;
+  grid-template-columns: 134px minmax(0, 1fr);
+  gap: 8px;
+  align-items: baseline;
+}
+.pl-hcl .seccion-cliente .cli-label { margin-right: 0; }
+.pl-hcl .seccion-cliente .cli-val {
+  min-width: 0;
+  min-height: 19px;
+  overflow-wrap: anywhere;
+}
+.pl-hcl .cli-val-dir { white-space: pre-wrap; }
+.pl-hcl .cli-der .cli-tipo-doc { margin-bottom: 8px; }
 .pl-hcl .hcl-valido {
   font-size: 11.5px !important;
   font-style: italic;
   color: #555;
-  margin-top: 4px;
+  overflow-wrap: anywhere;
 }
 
 /* -- Tabla ---------------------------------- */

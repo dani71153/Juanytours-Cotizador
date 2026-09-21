@@ -31,6 +31,12 @@
 #juany-fila-abonado[hidden] { display: none; }
 .pl-clasica .tot-fila-dop .tot-val, .pl-clasica .tot-fila-usd .tot-val { font-weight: bold; }
 .abono-impreso { display: none; }
+body.vista-impresion .juany-abonos .no-print,
+body.vista-impresion .juany-abonos.sin-abonos,
+body.vista-impresion .tabla-abonos th:last-child,
+body.vista-impresion .tabla-abonos td:last-child,
+body.vista-impresion #btn-agregar-abono { display: none !important; }
+body.vista-impresion .abono-impreso { display: inline; }
 @media print {
   .juany-abonos.sin-abonos { display: none; }
   .abono-impreso { display: inline; }

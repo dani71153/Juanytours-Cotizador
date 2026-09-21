@@ -12,7 +12,7 @@ function crearAbonos() {
     host.replaceChildren();
     host.classList.toggle('sin-abonos', !abonos.length);
     const titulo = document.createElement('h3');
-    titulo.textContent = 'Abonos y avances';
+    titulo.textContent = 'Avances';
     host.append(titulo);
     const tabla = document.createElement('table');
     tabla.className = 'tabla-abonos';
@@ -28,7 +28,7 @@ function crearAbonos() {
         const celda = fila.insertCell();
         const texto = document.createElement('span');
         texto.className = 'abono-impreso';
-        texto.textContent = tipo === 'number' ? '−' + formato(Number(valor)) : valor || '—';
+        texto.textContent = tipo === 'number' ? formato(Number(valor)) : valor || '—';
         const input = document.createElement('input');
         input.type = tipo; input.value = valor; input.className = 'no-print';
         input.setAttribute('aria-label', etiqueta + ' del abono ' + (i + 1));
@@ -36,7 +36,7 @@ function crearAbonos() {
         input.addEventListener('input', () => {
           if (!input.validity.valid) return;
           guardar(input.value);
-          texto.textContent = tipo === 'number' ? '−' + formato(Number(input.value)) : input.value || '—';
+          texto.textContent = tipo === 'number' ? formato(Number(input.value)) : input.value || '—';
           actualizar(); cambiar();
         });
         celda.append(input, texto);
@@ -69,7 +69,7 @@ function crearAbonos() {
       if (filaAbonado) filaAbonado.hidden = !hayAbonos;
       const poner = (id, texto) => { const el = document.getElementById(id); if (el) el.textContent = texto; };
       poner('juany-moneda-abonado', moneda);
-      poner('juany-total-abonado', '−' + formato(r.pagado));
+      poner('juany-total-abonado', formato(r.pagado));
       if (totales) {
         const saldoDOP = resumen(abonos, totales.dop).saldo;
         const saldoUSD = resumen(abonos, totales.usd, 1 / totales.tasa).saldo;

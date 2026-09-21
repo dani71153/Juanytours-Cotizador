@@ -24,12 +24,17 @@
 .tabla-abonos td:nth-child(2) { width: 125px; }
 .tabla-abonos td:nth-child(4) { width: 130px; }
 .juany-abonos button { font: inherit; cursor: pointer; padding: 5px 8px; margin-top: 6px; }
-.abonos-resumen { text-align: right; font-weight: bold; padding: 12px 0; color: var(--azul-dark); }
+.juany-abonos.sin-abonos h3, .juany-abonos.sin-abonos .tabla-abonos { display: none; }
+.pl-clasica.con-abonos .tot-fila-excento,
+.pl-clasica.con-abonos .tot-fila-gravado,
+.pl-clasica.con-abonos .tot-fila-itbis { display: none !important; }
+#juany-fila-abonado[hidden] { display: none; }
+.pl-clasica .tot-fila-dop .tot-val, .pl-clasica .tot-fila-usd .tot-val { font-weight: bold; }
 .abono-impreso { display: none; }
 @media print {
   .juany-abonos.sin-abonos { display: none; }
   .abono-impreso { display: inline; }
-  .tabla-abonos tr, .abonos-resumen { break-inside: avoid; }
+  .tabla-abonos tr { break-inside: avoid; }
   .tabla-abonos th:last-child, .tabla-abonos td:last-child { display: none; }
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }

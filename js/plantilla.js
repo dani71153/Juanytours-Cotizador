@@ -251,6 +251,8 @@ ${editor ? '          <th class="th-del  no-print"></th>\n' : ''}        </tr>
     </table>
 
     <!-- TOTALES + TIPO DE CAMBIO -->
+    <section id="juany-abonos" class="juany-abonos" aria-label="Abonos y saldo pendiente"></section>
+
     <div class="seccion-totales">
       <div class="tot-izq">
         <p class="tipo-cambio-texto">
@@ -276,13 +278,18 @@ ${editor ? '          <span id="tasa-indicador" class="tasa-indicador tasa-ind-o
             <td class="tot-signo">$</td>
             <td class="tot-val" id="tot-itbis">0.00</td>
           </tr>
+          <tr id="juany-fila-abonado" hidden>
+            <td class="tot-label">ABONADO <span id="juany-moneda-abonado">DOP</span></td>
+            <td class="tot-signo">$</td>
+            <td class="tot-val" id="juany-total-abonado">0.00</td>
+          </tr>
           <tr class="tot-fila-dop">
-            <td class="tot-label"><strong>TOTAL <span id="lbl-moneda-local">${esc(monLocal)}</span></strong></td>
+            <td class="tot-label"><strong><span id="juany-label-dop">TOTAL</span> <span id="lbl-moneda-local">${esc(monLocal)}</span></strong></td>
             <td class="tot-signo"><strong>$</strong></td>
             <td class="tot-val" id="tot-dop"><strong>0.00</strong></td>
           </tr>
           <tr class="tot-fila-usd">
-            <td class="tot-label"><strong>TOTAL <span id="lbl-moneda-ext">${esc(monExt)}</span></strong></td>
+            <td class="tot-label"><strong><span id="juany-label-usd">TOTAL</span> <span id="lbl-moneda-ext">${esc(monExt)}</span></strong></td>
             <td class="tot-signo"><strong>$</strong></td>
             <td class="tot-val" id="tot-usd"><strong>0.00</strong></td>
           </tr>
@@ -291,8 +298,6 @@ ${editor ? '          <span id="tasa-indicador" class="tasa-indicador tasa-ind-o
     </div>
 
     <!-- SECCIÓN DE PAGO -->
-    <section id="juany-abonos" class="juany-abonos" aria-label="Abonos y saldo pendiente"></section>
-
     <div class="seccion-pago">
       <div class="pago-head">
         <div class="ph-izq">Páguese A: <strong id="doc-pague-a">${esc(ban.pagueA || emp.nombre || '')}</strong></div>

@@ -6,7 +6,7 @@ function crearAbonos() {
     const pagado = redondear(abonos.reduce((s, a) => s + redondear(a.monto * factor), 0));
     return { pagado, saldo: redondear(redondear(total) - pagado) };
   }
-  function pintar(abonos, total, factor, moneda, cambiar) {
+  function pintar(abonos, total, factor, moneda, cambiar, totales) {
     const host = document.getElementById('juany-abonos');
     if (!host) return;
     host.replaceChildren();
@@ -47,7 +47,7 @@ function crearAbonos() {
       const eliminar = document.createElement('button');
       eliminar.type = 'button'; eliminar.className = 'no-print'; eliminar.textContent = 'Eliminar';
       eliminar.setAttribute('aria-label', 'Eliminar abono ' + (i + 1));
-      eliminar.onclick = () => { abonos.splice(i, 1); pintar(abonos, total, factor, moneda, cambiar); cambiar(); };
+      eliminar.onclick = () => { abonos.splice(i, 1); pintar(abonos, total, factor, moneda, cambiar, totales); cambiar(); };
       fila.insertCell().append(eliminar);
     });
     host.append(tabla);
@@ -59,15 +59,27 @@ function crearAbonos() {
       const d = new Date();
       const fecha = [d.getFullYear(), String(d.getMonth() + 1).padStart(2, '0'), String(d.getDate()).padStart(2, '0')].join('-');
       abonos.push({ fecha, monto: 0, referencia: '' });
-      pintar(abonos, total, factor, moneda, cambiar); cambiar();
+      pintar(abonos, total, factor, moneda, cambiar, totales); cambiar();
     };
-    const resumenEl = document.createElement('div'); resumenEl.className = 'abonos-resumen';
     function actualizar() {
       const r = resumen(abonos, total, factor);
-      resumenEl.textContent = 'Total abonado: ' + moneda + ' ' + formato(r.pagado) + ' · ' +
-        (r.saldo < 0 ? 'Saldo a favor: ' : 'Saldo pendiente: ') + moneda + ' ' + formato(Math.abs(r.saldo));
+      const hayAbonos = abonos.length > 0;
+      host.closest('.pagina')?.classList.toggle('con-abonos', hayAbonos);
+      const filaAbonado = document.getElementById('juany-fila-abonado');
+      if (filaAbonado) filaAbonado.hidden = !hayAbonos;
+      const poner = (id, texto) => { const el = document.getElementById(id); if (el) el.textContent = texto; };
+      poner('juany-moneda-abonado', moneda);
+      poner('juany-total-abonado', '−' + formato(r.pagado));
+      if (totales) {
+        const saldoDOP = resumen(abonos, totales.dop).saldo;
+        const saldoUSD = resumen(abonos, totales.usd, 1 / totales.tasa).saldo;
+        poner('tot-dop', formato(hayAbonos ? Math.abs(saldoDOP) : totales.dop));
+        poner('tot-usd', formato(hayAbonos ? Math.abs(saldoUSD) : totales.usd));
+        poner('juany-label-dop', hayAbonos ? (saldoDOP < 0 ? 'A FAVOR' : 'SALDO') : 'TOTAL');
+        poner('juany-label-usd', hayAbonos ? (saldoUSD < 0 ? 'A FAVOR' : 'SALDO') : 'TOTAL');
+      }
     }
-    actualizar(); host.append(agregar, resumenEl);
+    actualizar(); host.append(agregar);
   }
   return { pintar, resumen };
 }

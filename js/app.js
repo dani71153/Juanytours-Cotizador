@@ -196,6 +196,8 @@ function montarDocumento() {
   }
   const E = window.EMPRESA || {};
   const pl = E.plantilla || 'clasica';
+  const botonAbono = document.getElementById('btn-agregar-abono');
+  if (botonAbono) botonAbono.hidden = pl !== 'clasica';
   cont.innerHTML = Plantilla.interior({
     modo:      'editor',
     plantilla: pl,
@@ -1128,6 +1130,18 @@ function agregarFila() {
   TabManager.marcarSinGuardar();
 }
 
+function agregarAbono() {
+  if (Perfiles.plantilla() !== 'clasica') return;
+  if (monedaActiva() === 'USD') aplicarMoneda('DOP');
+  cot.abonos.push({ fecha: hoy(), monto: 0, referencia: '' });
+  calcularTotales();
+  TabManager.marcarSinGuardar();
+  const seccion = document.getElementById('juany-abonos');
+  seccion?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  const campos = seccion?.querySelectorAll('input[type="number"]');
+  if (campos?.length) campos[campos.length - 1].focus({ preventScroll: true });
+}
+
 function agregarNota() {
   contadorFilas++;
   cot.items.push({ id: contadorFilas, type: 'nota', texto: '' });
@@ -1726,7 +1740,6 @@ function calcularTotales() {
   const totalDOP = excentoDOP + gravadoDOP + itbsDOP;    // siempre en pesos
   const totalUSD = enUSD ? total : (tasa > 0 ? totalDOP / tasa : 0);
 
-  Abonos.pintar(cot.abonos, total, enUSD ? 1 / tasa : 1, enUSD ? 'USD' : 'DOP', () => TabManager.marcarSinGuardar());
   setText('tot-excento',  formatNum(excento));
   setText('tot-gravado',  formatNum(gravado));
   setText('tot-itbis',    formatNum(itbs));
@@ -1752,6 +1765,7 @@ function calcularTotales() {
   // siempre su propio valor, sin importar la vista activa.
   setHTML('tot-dop', '<strong>' + formatNum(totalDOP) + '</strong>');
   setHTML('tot-usd', '<strong>' + formatNum(totalUSD) + '</strong>');
+  Abonos.pintar(cot.abonos, total, enUSD ? 1 / tasa : 1, enUSD ? 'USD' : 'DOP', () => TabManager.marcarSinGuardar(), { dop: totalDOP, usd: totalUSD, tasa });
 
   // El abono y la nota del switch también siguen a la tasa
   if (enUSD) {
@@ -2881,12 +2895,12 @@ async function exportarHTML() {
     var itbs=gr*(ITBIS/100),tot=ex+gr+itbs;
     var dop=MONEDA==='USD'?tot*tasa:tot;
     var usd=MONEDA==='USD'?tot:(tasa>0?tot/tasa:0);
-    Abonos.pintar(pagos,tot,MONEDA==='USD'?${factorMoneda()}:1,MONEDA,function(){});
     sT('tot-excento',fN(ex));sT('tot-gravado',fN(gr));sT('tot-itbis',fN(itbs));
     sT('tot-subtotal',fN(gr));sT('tot-suma',fN(gr+itbs));
     sH('tot-general','<strong>'+fN(tot)+'</strong>');
     sH('tot-dop','<strong>'+fN(dop)+'</strong>');
     sH('tot-usd','<strong>'+fN(usd)+'</strong>');
+    Abonos.pintar(pagos,tot,MONEDA==='USD'?${factorMoneda()}:1,MONEDA,function(){},{dop:dop,usd:usd,tasa:MONEDA==='USD'?${1/factorMoneda()}:tasa});
     // Plantilla Herrera: Excento sólo si hay algo exento, abono y adeudado
     document.querySelectorAll('.hcl-fila-excento').forEach(function(tr){
       tr.classList.toggle('hcl-oculto', ex <= 0);

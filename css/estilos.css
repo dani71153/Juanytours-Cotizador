@@ -13,6 +13,25 @@
   --fuente:    Arial, Helvetica, sans-serif;
 }
 
+.juany-abonos { margin: 18px 0; font-variant-numeric: tabular-nums; }
+.juany-abonos h3 { font-size: 12px; color: var(--azul-dark); margin-bottom: 8px; }
+.tabla-abonos { width: 100%; border-collapse: collapse; font-size: 11px; }
+.tabla-abonos th, .tabla-abonos td { padding: 6px 4px; border-bottom: 1px solid var(--gris-borde); text-align: left; }
+.tabla-abonos th:nth-child(4), .tabla-abonos td:nth-child(4) { text-align: right; }
+.tabla-abonos input { width: 100%; min-width: 0; font: inherit; padding: 4px; border: 1px solid #c8c8c8; border-radius: 3px; }
+.tabla-abonos input[type=number] { text-align: right; }
+.tabla-abonos td:nth-child(1) { width: 65px; }
+.tabla-abonos td:nth-child(2) { width: 125px; }
+.tabla-abonos td:nth-child(4) { width: 130px; }
+.juany-abonos button { font: inherit; cursor: pointer; padding: 5px 8px; margin-top: 6px; }
+.abonos-resumen { text-align: right; font-weight: bold; padding: 12px 0; color: var(--azul-dark); }
+.abono-impreso { display: none; }
+@media print {
+  .juany-abonos.sin-abonos { display: none; }
+  .abono-impreso { display: inline; }
+  .tabla-abonos tr, .abonos-resumen { break-inside: avoid; }
+  .tabla-abonos th:last-child, .tabla-abonos td:last-child { display: none; }
+}
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {

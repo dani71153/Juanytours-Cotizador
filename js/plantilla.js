@@ -291,6 +291,8 @@ ${editor ? '          <span id="tasa-indicador" class="tasa-indicador tasa-ind-o
     </div>
 
     <!-- SECCIÓN DE PAGO -->
+    <section id="juany-abonos" class="juany-abonos" aria-label="Abonos y saldo pendiente"></section>
+
     <div class="seccion-pago">
       <div class="pago-head">
         <div class="ph-izq">Páguese A: <strong id="doc-pague-a">${esc(ban.pagueA || emp.nombre || '')}</strong></div>
@@ -442,7 +444,7 @@ ${bancoHTML}
           </tr>
           <tr class="tot-fila-dop">
             <td class="tot-label"><strong>Total General <span class="moneda-simbolo">${esc(simbolo)}</span></strong></td>
-            <td class="tot-val" id="tot-dop"><strong>0.00</strong></td>
+            <td class="tot-val" id="tot-general"><strong>0.00</strong></td>
           </tr>
         </table>
       </div>

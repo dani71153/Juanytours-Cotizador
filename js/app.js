@@ -8,6 +8,7 @@ const cot = {
   // El abono (plantilla Herrera) se guarda SIEMPRE en pesos, como los
   // importes: la vista en dólares lo muestra convertido.
   abono: 0,
+  abonos: [],
   items: []     // tipo 'item': { id, type, desc, cantidad, monto, formula, tipo }
                 //   formula: texto tal como se escribió ('1500+10%'), vacío
                 //   si el importe se puso como número — ver js/formula.js
@@ -760,6 +761,7 @@ function capturarEstado() {
     contenedor:    getCE('doc-contenedor'),
     puerto:        getCE('doc-puerto'),
     abono:         cot.abono || 0,
+    abonos:        JSON.parse(JSON.stringify(cot.abonos)),
     // Vista activa del documento: es la que se imprime
     moneda:        monedaActiva(),
     // Se conserva por compatibilidad con cotizaciones guardadas antes
@@ -794,6 +796,7 @@ function restaurarEstado(datos) {
   setCE('doc-contenedor', datos.contenedor || '');
   setCE('doc-puerto',     datos.puerto ?? def.puerto ?? '');
   cot.abono = parseMonto(datos.abono || 0);
+  cot.abonos = Array.isArray(datos.abonos) ? datos.abonos.map(a => ({ fecha: a.fecha || "", referencia: a.referencia || "", monto: Math.max(0, Number(a.monto) || 0) })) : [];
 
   const sel = document.getElementById('sel-tipo-doc');
   if (sel && datos.tipoDoc) { sel.value = datos.tipoDoc; cambiarTipoDoc(datos.tipoDoc); }
@@ -847,6 +850,7 @@ function iniciarEstadoVacio(numero = null) {
   setCE('doc-contenedor',  '');
   setCE('doc-puerto',      window.EMPRESA?.defectos?.puerto || '');
   cot.abono = 0;
+  cot.abonos = [];
   setCE('doc-vendedor',     window.EMPRESA?.defectos?.vendedor    || '');
   setCE('doc-valido-hasta', window.EMPRESA?.defectos?.validoHasta || '');
   const vencNuevo = document.getElementById('doc-vencimiento');
@@ -1722,12 +1726,15 @@ function calcularTotales() {
   const totalDOP = excentoDOP + gravadoDOP + itbsDOP;    // siempre en pesos
   const totalUSD = enUSD ? total : (tasa > 0 ? totalDOP / tasa : 0);
 
+  Abonos.pintar(cot.abonos, total, enUSD ? 1 / tasa : 1, enUSD ? 'USD' : 'DOP', () => TabManager.marcarSinGuardar());
   setText('tot-excento',  formatNum(excento));
   setText('tot-gravado',  formatNum(gravado));
   setText('tot-itbis',    formatNum(itbs));
   // Filas propias de LAPS: Subtotal = base imponible, Suma = subtotal + ITBIS
   setText('tot-subtotal', formatNum(gravado));
   setText('tot-suma',     formatNum(gravado + itbs));
+  // LAPS tiene un único total general: sigue la moneda del documento.
+  setHTML('tot-general', '<strong>' + formatNum(total) + '</strong>');
 
   // Plantilla Herrera: el Subtotal es la base gravada (igual que en
   // LAPS), así "ITEBIS %18" sí es el 18% de lo que tiene encima. La
@@ -2847,6 +2854,8 @@ async function exportarHTML() {
   });
 
   const scriptInline = `(function(){
+  var Abonos=(${crearAbonos.toString()})();
+  var pagos=${JSON.stringify(estado.abonos || []).replace(/</g, "\\u003c")};
   var ITBIS=${itbisPct};
   var MARCA=${JSON.stringify(_marcaArchivo())};
   var MONEDA=${JSON.stringify(monedaDoc)};
@@ -2872,8 +2881,10 @@ async function exportarHTML() {
     var itbs=gr*(ITBIS/100),tot=ex+gr+itbs;
     var dop=MONEDA==='USD'?tot*tasa:tot;
     var usd=MONEDA==='USD'?tot:(tasa>0?tot/tasa:0);
+    Abonos.pintar(pagos,tot,MONEDA==='USD'?${factorMoneda()}:1,MONEDA,function(){});
     sT('tot-excento',fN(ex));sT('tot-gravado',fN(gr));sT('tot-itbis',fN(itbs));
     sT('tot-subtotal',fN(gr));sT('tot-suma',fN(gr+itbs));
+    sH('tot-general','<strong>'+fN(tot)+'</strong>');
     sH('tot-dop','<strong>'+fN(dop)+'</strong>');
     sH('tot-usd','<strong>'+fN(usd)+'</strong>');
     // Plantilla Herrera: Excento sólo si hay algo exento, abono y adeudado

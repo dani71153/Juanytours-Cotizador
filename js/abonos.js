@@ -12,7 +12,7 @@ function crearAbonos() {
     host.replaceChildren();
     host.classList.toggle('sin-abonos', !abonos.length);
     const titulo = document.createElement('h3');
-    titulo.textContent = 'Avances';
+    titulo.textContent = 'Abonos y avances';
     host.append(titulo);
     const tabla = document.createElement('table');
     tabla.className = 'tabla-abonos';

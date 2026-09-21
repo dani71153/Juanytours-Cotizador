@@ -25,9 +25,6 @@
 .tabla-abonos td:nth-child(4) { width: 130px; }
 .juany-abonos button { font: inherit; cursor: pointer; padding: 5px 8px; margin-top: 6px; }
 .juany-abonos.sin-abonos h3, .juany-abonos.sin-abonos .tabla-abonos { display: none; }
-.pl-clasica.con-abonos .tot-fila-excento,
-.pl-clasica.con-abonos .tot-fila-gravado,
-.pl-clasica.con-abonos .tot-fila-itbis { display: none !important; }
 #juany-fila-abonado[hidden] { display: none; }
 .pl-clasica .tot-fila-dop .tot-val, .pl-clasica .tot-fila-usd .tot-val { font-weight: bold; }
 .abono-impreso { display: none; }

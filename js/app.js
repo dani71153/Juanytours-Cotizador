@@ -804,7 +804,7 @@ function restaurarEstado(datos) {
   if (sel && datos.tipoDoc) { sel.value = datos.tipoDoc; cambiarTipoDoc(datos.tipoDoc); }
   // Cotizaciones guardadas antes de que existiera el selector no traen
   // tipoDoc: hay que limpiar igual el modo conduce de la pestaña anterior.
-  else aplicarModoConduce(sel?.value);
+  else aplicarModoDoc(sel?.value);
 
   const fecha = document.getElementById('doc-fecha');
   if (fecha) fecha.value = datos.fecha || hoy();
@@ -2084,7 +2084,7 @@ function irAFila(id) {
 function cambiarTipoDoc(valor) {
   setText('doc-titulo-texto',  valor);
   setText('cli-tipo-doc-texto',valor);
-  aplicarModoConduce(valor);
+  aplicarModoDoc(valor);
   if (monedaActiva() === 'USD' && TIPOS_FISCALES.includes(valor)) {
     mostrarToast('Ojo: el documento está en dólares. Un comprobante fiscal se reporta en pesos.', true);
   }
@@ -2099,9 +2099,18 @@ function esConduce(tipoDoc) {
   return (tipoDoc || '') === 'CONDUCE';
 }
 
-function aplicarModoConduce(tipoDoc) {
-  document.getElementById('documento')
-    ?.classList.toggle('doc-conduce', esConduce(tipoDoc));
+// Documentos que no imprimen el bloque de cobro (páguese a, banco,
+// cuentas, método de pago). El conduce no cobra nada; y en una factura
+// ya emitida esos datos sólo repiten el encabezado — a dónde pagar hay
+// que decirlo en la cotización o la proforma, que es cuando el cliente
+// todavía no ha pagado. Ver .doc-sin-pago en css/estilos.css.
+const TIPOS_SIN_COBRO = ['CONDUCE', 'FACTURA', 'FACTURA DE CRÉDITO FISCAL'];
+
+function aplicarModoDoc(tipoDoc) {
+  const doc = document.getElementById('documento');
+  if (!doc) return;
+  doc.classList.toggle('doc-conduce', esConduce(tipoDoc));
+  doc.classList.toggle('doc-sin-pago', TIPOS_SIN_COBRO.includes(tipoDoc || ''));
 }
 
 // El <input type="date"> se dibuja con el idioma del navegador, así que
@@ -2895,7 +2904,8 @@ async function exportarHTML() {
   const vis      = leerOpcionesVis();
   const clasesVis = OPC_VIS.filter(k => vis[k]).map(k => ' sin-' + k).join('');
   const pl        = E.plantilla || 'clasica';
-  const claseCond = esConduce(estado.tipoDoc) ? ' doc-conduce' : '';
+  const claseCond = (esConduce(estado.tipoDoc) ? ' doc-conduce' : '')
+                  + (TIPOS_SIN_COBRO.includes(estado.tipoDoc || '') ? ' doc-sin-pago' : '');
   const marca     = E.empresa?.nombre || 'Cotizacion';
   const hoja      = leerHoja();
   const anchoHoja = _anchoHojaPx(hoja.hoja, hoja.orientacion);
@@ -2962,10 +2972,13 @@ async function exportarHTML() {
     var ab=pM((document.getElementById('doc-abono')||{}).innerText||'0');
     sH('tot-adeudado','<strong>'+fN(tot-ab)+'</strong>');
   };
+  var SIN_COBRO=${JSON.stringify(TIPOS_SIN_COBRO)};
   window.cambiarTipoDoc=function(v){
     sT('doc-titulo-texto',v);sT('cli-tipo-doc-texto',v);
     var pag=document.querySelector('.pagina');
-    if(pag) pag.classList.toggle('doc-conduce',v==='CONDUCE');
+    if(!pag) return;
+    pag.classList.toggle('doc-conduce',v==='CONDUCE');
+    pag.classList.toggle('doc-sin-pago',SIN_COBRO.indexOf(v)!==-1);
   };
   window.cambiarEtiquetaNcf=function(v){sT('lbl-ncf',(v==='Avance'?'Avance':'NCF')+':');};
   window.imprimir=function(){

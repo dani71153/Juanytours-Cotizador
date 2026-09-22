@@ -60,6 +60,21 @@
 `;
   }
 
+  // ── Fecha impresa ──────────────────────────
+  //  Un <input type="date"> se dibuja con el idioma del navegador:
+  //  en inglés imprime 09/22/2026. En un documento fiscal la fecha
+  //  no puede ser ambigua, así que al lado del input va el texto en
+  //  dd/mm/aaaa y es ese el que se imprime (ver .fecha-impresa).
+  function fechaTxt(iso) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || ''));
+    return m ? `${m[3]}/${m[2]}/${m[1]}` : '';
+  }
+
+  function campoFecha(id, valor) {
+    return `<input type="date" id="${id}" class="inp-fecha" value="${esc(valor || '')}" />`
+         + `<span class="fecha-impresa" id="${id}-txt">${esc(fechaTxt(valor))}</span>`;
+  }
+
   function num(n) {
     return Number(n).toLocaleString('es-DO',
       { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -106,7 +121,7 @@
         .concat(['td-det', 'td-unidad', 'td-cantidad', 'td-monto', 'td-linea']);
     }
     if (plantilla === 'hcl') return ['td-num', 'td-det', 'td-llegada', 'td-monto'];
-    return ['td-num', 'td-det', 'td-cantidad', 'td-monto'];
+    return ['td-num', 'td-det', 'td-cantidad', 'td-monto', 'td-linea'];
   }
 
   function celdasVacias(plantilla, numerar) {
@@ -148,7 +163,7 @@
                       : hcl  ? `        <td class="td-llegada" contenteditable="true" data-field="unidad" data-placeholder=" ">${esc(f.unidad || '')}</td>\n`
                       : '';
         const cCant   = hcl ? '' : `        <td class="td-cantidad" contenteditable="true" data-field="cantidad" data-placeholder="1">${cant}</td>\n`;
-        const cLinea  = laps ? `        <td class="td-linea" data-field="linea">${num(monto * cant)}</td>\n` : '';
+        const cLinea  = hcl ? '' : `        <td class="td-linea" data-field="linea">${num(monto * cant)}</td>\n`;
         html += `      <tr data-tipo="${tipo}"${visible ? '' : ' class="fila-oculta"'}>
 ${cNum}        <td class="td-det" contenteditable="true" data-field="desc" data-placeholder="Descripci&oacute;n del servicio">${esc(f.desc || '')}</td>
 ${cUnidad}${cCant}        <td class="td-monto${fmla ? ' con-formula' : ''}" contenteditable="true" data-field="monto" data-placeholder="0.00"${attrF}>${num(monto)}</td>
@@ -199,6 +214,7 @@ ${cLinea}        <td class="td-tipo no-print">
     const emp    = ctx.empresa || {};
     const ban    = ctx.banco   || {};
     const fi     = ctx.fiscal  || {};
+    const def    = ctx.defectos || {};
 
     const tipoDoc   = e.tipoDoc || 'COTIZACIÓN';
     const etqRncEmp = emp.rncLabel || 'RNC';
@@ -239,7 +255,7 @@ ${cLinea}        <td class="td-tipo no-print">
         <div class="doc-fecha-ref">
           <div class="fr-fila">
             <span class="fr-label">FECHA:</span>
-            <input type="date" id="doc-fecha" class="inp-fecha" value="${esc(e.fecha || '')}" />
+            ${campoFecha('doc-fecha', e.fecha)}
           </div>
           <div class="fr-fila fr-fila-ref">
             <span class="fr-label">REFERENCIA:</span>
@@ -267,12 +283,21 @@ ${cLinea}        <td class="td-tipo no-print">
           <span class="cli-label" id="lbl-cli-rnc">${esc(etqIdCli)}:</span>
           <span class="cli-val" contenteditable="true" id="doc-cli-rnc" data-placeholder="${esc(etqIdCli)}">${esc(e.rncCli || '')}</span>
         </p>
+        <p>
+          <span class="cli-label">DIRECCI&Oacute;N:</span>
+          <span class="cli-val cli-val-dir" contenteditable="true" id="doc-cli-dir"
+                data-placeholder="Direcci&oacute;n del cliente">${esc(e.dirCliente || '')}</span>
+        </p>
       </div>
       <div class="cli-der">
-        <p class="cli-tipo-doc" id="cli-tipo-doc-texto">${esc(tipoDoc)}</p>
         <p class="cli-fila-ncf">
           ${etiquetaNcf(e)}
           <span class="cli-val" contenteditable="true" id="doc-ncf" data-placeholder="0">${esc(e.ncf || '')}</span>
+        </p>
+        <p class="cli-fila-ncf cli-valido">
+          <span contenteditable="true" id="doc-valido-hasta"
+                title="Vigencia de la secuencia de comprobantes autorizada"
+                data-placeholder="Valido hasta...">${esc(e.validoHasta || def.validoHasta || '')}</span>
         </p>
       </div>
     </div>
@@ -281,10 +306,11 @@ ${cLinea}        <td class="td-tipo no-print">
     <table class="tabla-servicios">
       <thead>
         <tr>
-${editor ? '          <th class="th-seleccion no-print" aria-label="Selección de filas"></th>\n' : ''}          <th class="th-num">Cant.</th>
+${editor ? '          <th class="th-seleccion no-print" aria-label="Selección de filas"></th>\n' : ''}          <th class="th-num">N.&ordm;</th>
           <th class="th-det">Detalles</th>
           <th class="th-cantidad">Cantidad</th>
-          <th class="th-monto" title="Acepta f&oacute;rmulas: 1500+1500*10%, 1500+10%, (120+30)*2">Monto<span class="moneda-sufijo"></span></th>
+          <th class="th-monto" title="Acepta f&oacute;rmulas: 1500+1500*10%, 1500+10%, (120+30)*2">Precio<span class="moneda-sufijo"></span></th>
+          <th class="th-linea">Total</th>
           <th class="th-tipo no-print">Tipo</th>
 ${editor ? '          <th class="th-del  no-print"></th>\n' : ''}        </tr>
       </thead>
@@ -305,7 +331,7 @@ ${editor ? '          <span id="tasa-indicador" class="tasa-indicador tasa-ind-o
       <div class="tot-der">
         <table class="tabla-totales">
           <tr class="tot-fila-excento">
-            <td class="tot-label">TOTAL EXCENTO</td>
+            <td class="tot-label">TOTAL EXENTO</td>
             <td class="tot-signo">$</td>
             <td class="tot-val" id="tot-excento">0.00</td>
           </tr>
@@ -429,9 +455,9 @@ ${firmasConduce()}`;
         </div>
         <div class="lm-val">&nbsp;</div>
         <div class="lm-cab">FECHA</div>
-        <div class="lm-val"><input type="date" id="doc-fecha" class="inp-fecha" value="${esc(e.fecha || '')}" /></div>
+        <div class="lm-val">${campoFecha('doc-fecha', e.fecha)}</div>
         <div class="lm-cab lm-fila-venc">Fecha de Vencimiento</div>
-        <div class="lm-val lm-fila-venc"><input type="date" id="doc-vencimiento" class="inp-fecha" value="${esc(e.vencimiento || '')}" /></div>
+        <div class="lm-val lm-fila-venc">${campoFecha('doc-vencimiento', e.vencimiento)}</div>
         <div class="lm-cab lm-fila-cod">Codigo de Cliente</div>
         <div class="lm-val lm-fila-cod"><span contenteditable="true" id="doc-cod-cliente" data-placeholder="0">${esc(e.codigoCliente || '')}</span></div>
         <div class="lm-val lm-valido"><span contenteditable="true" id="doc-valido-hasta" data-placeholder="Valido hasta...">${esc(e.validoHasta || def.validoHasta || '')}</span></div>
@@ -468,7 +494,7 @@ ${bancoHTML}
       <div class="tot-der">
         <table class="tabla-totales tabla-totales-laps">
           <tr class="tot-fila-excento">
-            <td class="tot-label">Excento</td>
+            <td class="tot-label">Exento</td>
             <td class="tot-val" id="tot-excento">0.00</td>
           </tr>
           <tr class="tot-fila-subtotal">
@@ -576,7 +602,7 @@ ${firmasConduce()}`;
         <div class="doc-fecha-ref">
           <div class="fr-fila">
             <span class="fr-label">FECHA:</span>
-            <input type="date" id="doc-fecha" class="inp-fecha" value="${esc(e.fecha || '')}" />
+            ${campoFecha('doc-fecha', e.fecha)}
           </div>
           <div class="fr-fila">
             <span class="fr-label">CONTENEDOR:</span>
@@ -654,7 +680,7 @@ ${editor ? '          <th class="th-del  no-print"></th>\n' : ''}        </tr>
       <div class="tot-der">
         <table class="tabla-totales tabla-totales-hcl">
           <tr class="tot-fila-excento">
-            <td class="tot-label">TOTAL EXCENTO</td>
+            <td class="tot-label">TOTAL EXENTO</td>
             <td class="tot-signo">$</td>
             <td class="tot-val" id="tot-excento">0.00</td>
           </tr>
@@ -707,7 +733,7 @@ ${editor ? '          <th class="th-del  no-print"></th>\n' : ''}        </tr>
 ${firmasConduce()}`;
   }
 
-  const Plantilla = { TIPOS_DOC, interior, interiorClasica, interiorLaps, interiorHcl, cuentas, lineasBanco, filasExport, columnasTabla, celdasVacias, firmasConduce, esc, num };
+  const Plantilla = { TIPOS_DOC, interior, interiorClasica, interiorLaps, interiorHcl, cuentas, lineasBanco, filasExport, columnasTabla, celdasVacias, firmasConduce, fechaTxt, esc, num };
 
   root.Plantilla = Plantilla;
   if (typeof module !== 'undefined' && module.exports) module.exports = Plantilla;

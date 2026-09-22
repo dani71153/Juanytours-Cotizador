@@ -143,7 +143,7 @@ function nuevaCotizacion() {
       ? 'Columnas UD. M y TOTAL &middot; pie de firmas'
       : p.plantilla === 'hcl'
       ? 'Factura con contenedor, puerto y abono'
-      : 'Excento / gravado &middot; total en USD';
+      : 'Exento / gravado &middot; total en USD';
     return `
     <button class="perfil-opcion${p.id === activo ? ' perfil-opcion-activa' : ''}"
             onclick="crearCotizacionCon('${p.id}')">
@@ -808,6 +808,7 @@ function restaurarEstado(datos) {
 
   const fecha = document.getElementById('doc-fecha');
   if (fecha) fecha.value = datos.fecha || hoy();
+  pintarFechasImpresas();
 
   // Restaurar items
   cot.items    = datos.items ? JSON.parse(JSON.stringify(datos.items)) : [];
@@ -868,6 +869,7 @@ function iniciarEstadoVacio(numero = null) {
   if (sel) { sel.value = tipoIni; cambiarTipoDoc(tipoIni); }
 
   document.getElementById('doc-fecha').value = hoy();
+  pintarFechasImpresas();
 
   cot.items = [];
   contadorFilas = 0;
@@ -1312,9 +1314,9 @@ function renderFilas() {
       // HCL factura por precio, sin columna de cantidad (queda en 1)
       const celdaCant   = hcl ? '' : `<td class="td-cantidad" contenteditable="true" data-field="cantidad"
             data-placeholder="1">${fila.cantidad}</td>`;
-      const celdaLinea  = laps
-        ? `<td class="td-linea" data-field="linea">${formatNum(montoMostrado(fila.monto) * (fila.cantidad || 1))}</td>`
-        : '';
+      const celdaLinea  = hcl
+        ? ''
+        : `<td class="td-linea" data-field="linea">${formatNum(montoMostrado(fila.monto) * (fila.cantidad || 1))}</td>`;
       // Importe: si se escribió como fórmula se muestra el resultado y la
       // fórmula queda guardada. Una fórmula rota se muestra tal cual, para
       // que el error salte a la vista en lugar de imprimir un 0.00 mudo.
@@ -1733,7 +1735,7 @@ function calcularTotales() {
       if (celMonto) celMonto.textContent = formatNum(monto);
     }
 
-    // Columna TOTAL por línea (sólo existe en la plantilla LAPS)
+    // Columna TOTAL por línea (existe en todas menos en Herrera)
     const celLinea = tr.querySelector('[data-field="linea"]');
     if (celLinea) celLinea.textContent = formatNum(total);
   });
@@ -2083,6 +2085,9 @@ function cambiarTipoDoc(valor) {
   setText('doc-titulo-texto',  valor);
   setText('cli-tipo-doc-texto',valor);
   aplicarModoConduce(valor);
+  if (monedaActiva() === 'USD' && TIPOS_FISCALES.includes(valor)) {
+    mostrarToast('Ojo: el documento está en dólares. Un comprobante fiscal se reporta en pesos.', true);
+  }
 }
 
 // El conduce entrega mercancía, no cobra: no imprime importes ni
@@ -2097,6 +2102,19 @@ function esConduce(tipoDoc) {
 function aplicarModoConduce(tipoDoc) {
   document.getElementById('documento')
     ?.classList.toggle('doc-conduce', esConduce(tipoDoc));
+}
+
+// El <input type="date"> se dibuja con el idioma del navegador, así que
+// lo que se imprime es el texto en dd/mm/aaaa que va a su lado
+// (ver campoFecha() en js/plantilla.js y .fecha-impresa en el CSS).
+function pintarFechaImpresa(id) {
+  const inp = document.getElementById(id);
+  const txt = document.getElementById(id + '-txt');
+  if (inp && txt) txt.textContent = Plantilla.fechaTxt(inp.value);
+}
+
+function pintarFechasImpresas() {
+  ['doc-fecha', 'doc-vencimiento'].forEach(pintarFechaImpresa);
 }
 
 function cambiarEtiquetaNcf(valor, marcar = true) {
@@ -2211,9 +2229,22 @@ function actualizarNotaMoneda() {
   nota.textContent = `a la tasa de ${formatNum(t)} · los precios se escriben en pesos`;
 }
 
+// Documentos que amparan un crédito fiscal: el monto que se reporta a
+// la DGII va en pesos, así que verlos en dólares es para cotizar, no
+// para facturar. No se bloquea —el switch sigue siendo útil— pero se
+// avisa, porque el documento se imprime en la moneda que esté activa.
+const TIPOS_FISCALES = ['FACTURA DE CRÉDITO FISCAL', 'FACTURA'];
+
+function esDocFiscal() {
+  return TIPOS_FISCALES.includes(document.getElementById('sel-tipo-doc')?.value || '');
+}
+
 function cambiarMoneda(m) {
   if (monedaActiva() === m) return;
   aplicarMoneda(m);
+  if (m === 'USD' && esDocFiscal()) {
+    mostrarToast('Ojo: se imprimirá en dólares. Un comprobante fiscal se reporta en pesos.', true);
+  }
   TabManager.marcarSinGuardar();
 }
 
@@ -2588,6 +2619,7 @@ function iniciarListenersDocumento() {
   });
 
   document.getElementById('doc-fecha')?.addEventListener('change', () => {
+    pintarFechaImpresa('doc-fecha');
     calcularTotales();
     TabManager.marcarSinGuardar();
   });
@@ -2610,6 +2642,7 @@ function iniciarListenersDocumento() {
 
   // Fecha de vencimiento (sólo plantilla LAPS)
   document.getElementById('doc-vencimiento')?.addEventListener('change', () => {
+    pintarFechaImpresa('doc-vencimiento');
     TabManager.marcarSinGuardar();
   });
 

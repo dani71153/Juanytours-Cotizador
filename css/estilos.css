@@ -256,6 +256,17 @@ body {
 }
 .inp-fecha:focus { outline: none; background: #FFF9D6; }
 
+/* Texto de la fecha que sí se imprime, en dd/mm/aaaa.
+   El <input type="date"> se dibuja con el idioma del navegador
+   (en inglés, 09/22/2026), así que para imprimir se cambia por
+   este span. Ver campoFecha() en js/plantilla.js. */
+.fecha-impresa {
+  display: none;
+  font-size: 12px;
+  color: #333;
+}
+.pl-laps .laps-meta .fecha-impresa { font-size: 11px; }
+
 /* =============================================
    LÍNEA SEPARADORA
    ============================================= */
@@ -317,6 +328,15 @@ body.vista-impresion .cli-label-ncf #lbl-ncf { display: inline; }
 
 .cli-der { text-align: right; }
 
+/* Vigencia de la secuencia de comprobantes, bajo el NCF */
+.cli-valido {
+  font-size: 10.5px;
+  font-style: italic;
+  color: #555;
+}
+
+.cli-val-dir { white-space: pre-wrap; }
+
 .cli-tipo-doc {
   font-size: 14px;
   font-weight: bold;
@@ -376,6 +396,16 @@ body.vista-impresion .cli-label-ncf #lbl-ncf { display: inline; }
   width: 120px;
   vertical-align: middle;
   font-weight: 500;
+}
+
+/* Total por línea = precio x cantidad. Sin esta columna la factura
+   obliga a multiplicar de cabeza para cuadrarla con los totales. */
+.th-linea,
+.td-linea {
+  text-align: right;
+  width: 120px;
+  vertical-align: middle;
+  font-variant-numeric: tabular-nums;
 }
 
 /* ── Importes con fórmula (ver js/formula.js) ──
@@ -1461,6 +1491,8 @@ body.vista-impresion #documento .td-seleccion { display: none !important; }
     cursor: default;
   }
   .pagina .inp-fecha::-webkit-calendar-picker-indicator { display: none !important; }
+  .pagina .inp-fecha    { display: none !important; }
+  .pagina .fecha-impresa { display: inline; }
 
   .pagina .doc-numero,
   .pagina .cli-val,
@@ -1962,6 +1994,8 @@ body.vista-impresion .pagina .inp-fecha {
     cursor: default;
   }
 body.vista-impresion .pagina .inp-fecha::-webkit-calendar-picker-indicator { display: none !important; }
+body.vista-impresion .pagina .inp-fecha    { display: none !important; }
+body.vista-impresion .pagina .fecha-impresa { display: inline; }
 
 body.vista-impresion .pagina .doc-numero,
 body.vista-impresion .pagina .cli-val,

@@ -18,7 +18,8 @@
     'COTIZACIÓN',
     'FACTURA DE CRÉDITO FISCAL',
     'FACTURA',
-    'PROFORMA'
+    'PROFORMA',
+    'CONDUCE'
   ];
 
   function esc(str) {
@@ -35,6 +36,28 @@
         <option value="Avance"${etiqueta === 'Avance' ? ' selected' : ''}>Avance</option>
       </select>
     </span>`;
+  }
+
+  // ── Pie de entrega del conduce ─────────────
+  //  Va en las tres plantillas pero sólo se imprime cuando el tipo de
+  //  documento es CONDUCE (clase .doc-conduce en el contenedor). Son
+  //  líneas para firmar a mano: el conduce se firma al recibir la
+  //  mercancía, así que no hay nada que guardar en el estado.
+  function firmasConduce() {
+    return `
+    <div class="conduce-firmas">
+      <div class="cf-bloque">
+        <div class="cf-linea"></div>
+        <p class="cf-rotulo">ENTREGADO POR</p>
+        <p class="cf-nota">Nombre y firma</p>
+      </div>
+      <div class="cf-bloque">
+        <div class="cf-linea"></div>
+        <p class="cf-rotulo">RECIBIDO POR</p>
+        <p class="cf-nota">Nombre, c&eacute;dula, firma y fecha</p>
+      </div>
+    </div>
+`;
   }
 
   function num(n) {
@@ -72,6 +95,24 @@
     ].filter(Boolean).map(l => `        <p>${esc(l)}</p>`).join('\n');
   }
 
+  // ── Columnas de la tabla, por plantilla ────
+  //  La usan renderFilas() y filasExport() para que las filas vacías
+  //  decorativas lleven las mismas clases que las reales. Con <td> sin
+  //  clase, ocultar una columna (el importe en un conduce, por ejemplo)
+  //  dejaba una columna fantasma sostenida por esas filas vacías.
+  function columnasTabla(plantilla, numerar) {
+    if (plantilla === 'laps') {
+      return (numerar ? ['td-num'] : [])
+        .concat(['td-det', 'td-unidad', 'td-cantidad', 'td-monto', 'td-linea']);
+    }
+    if (plantilla === 'hcl') return ['td-num', 'td-det', 'td-llegada', 'td-monto'];
+    return ['td-num', 'td-det', 'td-cantidad', 'td-monto'];
+  }
+
+  function celdasVacias(plantilla, numerar) {
+    return columnasTabla(plantilla, numerar).map(c => `<td class="${c}"></td>`).join('');
+  }
+
   // ── Filas de la tabla para el HTML exportado ──
   // En el editor las filas las arma renderFilas(), que además
   // engancha listeners por celda; aquí sólo hace falta el markup.
@@ -84,7 +125,7 @@
     const f    = factor || 1;
     const conv = v => (f === 1 ? (v || 0) : Math.round((v || 0) * f * 100) / 100);
     // Columnas visibles: HCL no lleva cantidad ni total por línea
-    const cols = laps ? (numerar ? 6 : 5) : 4;
+    const cols = columnasTabla(plantilla, numerar).length;
     let html = '', numItem = 0;
     (items || []).forEach(f => {
       if (f.type === 'nota') {
@@ -121,9 +162,9 @@ ${cLinea}        <td class="td-tipo no-print">
       }
     });
     const totalItems = (items || []).filter(f => f.type === 'item').length;
-    const celdas = cols + 1;
+    const vacias = celdasVacias(plantilla, numerar) + '<td class="td-tipo no-print"></td>';
     for (let x = totalItems; x < 3; x++) {
-      html += `      <tr class="tr-vacio">${'<td></td>'.repeat(celdas)}</tr>\n`;
+      html += `      <tr class="tr-vacio">${vacias}</tr>\n`;
     }
     return html;
   }
@@ -311,7 +352,7 @@ ${editor ? '          <span id="tasa-indicador" class="tasa-indicador tasa-ind-o
       </div>
       <div class="pago-notas" contenteditable="true" id="doc-notas" data-placeholder="Notas adicionales...">${esc(e.notas || '')}</div>
     </div>
-`;
+${firmasConduce()}`;
   }
 
   // ── Diseño LAPS ────────────────────────────
@@ -467,7 +508,7 @@ ${bancoHTML}
       <div class="pago-notas" contenteditable="true" id="doc-notas" data-placeholder="Notas adicionales...">${esc(e.notas || '')}</div>
       <span id="doc-metodo" class="laps-oculto" contenteditable="true">${esc(e.metodo || '')}</span>
     </div>
-`;
+${firmasConduce()}`;
   }
 
   // ── Diseño Herrera Customs Logistic ────────
@@ -663,10 +704,10 @@ ${editor ? '          <th class="th-del  no-print"></th>\n' : ''}        </tr>
       <span id="doc-banco-nombre" class="hcl-oculto">${esc(ban.nombre || '')}</span>
       <div id="bloque-cuentas" class="hcl-oculto"></div>
     </div>
-`;
+${firmasConduce()}`;
   }
 
-  const Plantilla = { TIPOS_DOC, interior, interiorClasica, interiorLaps, interiorHcl, cuentas, lineasBanco, filasExport, esc, num };
+  const Plantilla = { TIPOS_DOC, interior, interiorClasica, interiorLaps, interiorHcl, cuentas, lineasBanco, filasExport, columnasTabla, celdasVacias, firmasConduce, esc, num };
 
   root.Plantilla = Plantilla;
   if (typeof module !== 'undefined' && module.exports) module.exports = Plantilla;

@@ -1549,6 +1549,166 @@ body.vista-impresion #documento .td-seleccion { display: none !important; }
 }
 
 /* =============================================
+   CONDUCE (documento de entrega de mercancía)
+
+   El conduce acompaña la mercancía y prueba que se
+   entregó: lleva descripción y cantidad, pero no
+   precios, ni ITBIS, ni NCF, ni datos de cobro, y sí
+   un pie de entregado / recibido para firmar a mano.
+
+   Se activa con la clase .doc-conduce en el
+   contenedor del documento (la pone cambiarTipoDoc).
+   Sigue la misma convención que las opciones de
+   visibilidad: en pantalla se atenúa para poder
+   seguir editando y en impresión / exportación
+   desaparece. Así los importes nunca se pierden y
+   el mismo documento se puede facturar después.
+   ============================================= */
+
+/* El pie sólo existe cuando el documento es un conduce */
+.conduce-firmas { display: none; }
+
+.doc-conduce .conduce-firmas {
+  display: flex;
+  gap: 56px;
+  margin-top: 48px;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.doc-conduce .cf-bloque { flex: 1; text-align: center; }
+
+.cf-linea {
+  border-top: 1px solid #333;
+  margin-bottom: 6px;
+}
+
+.cf-rotulo {
+  margin: 0;
+  font-weight: bold;
+  font-size: 11.5px;
+  letter-spacing: .4px;
+}
+
+.cf-nota {
+  margin: 2px 0 0;
+  font-size: 10px;
+  color: #6B7684;
+}
+
+/* Sin el bloque de cobro alrededor, la nota deja de ser
+   una fila dentro de la caja de pago */
+.doc-conduce .pago-notas { border-top: none; }
+.pl-laps.doc-conduce .laps-firma-espacio { min-height: 0; }
+
+/* Impreso, la nota va suelta bajo la tabla: sin el marco de la
+   caja de pago, que ya no tiene nada más dentro. En pantalla el
+   marco se queda para poder hacerle clic y escribir. */
+body.vista-impresion .doc-conduce .seccion-pago,
+body.vista-impresion .doc-conduce .pago-notas,
+body.vista-impresion .doc-conduce .laps-firma-espacio {
+  border: none !important;
+  min-height: 0 !important;
+  margin-top: 0;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+@media print {
+  .doc-conduce .seccion-pago,
+  .doc-conduce .pago-notas,
+  .doc-conduce .laps-firma-espacio {
+    border: none !important;
+    min-height: 0 !important;
+    margin-top: 0;
+    padding-left: 0;
+    padding-right: 0;
+  }
+}
+
+/* Lo que un conduce no imprime:
+     · importes, totales y tasa de cambio — no cobra
+     · NCF — no es un documento fiscal
+     · páguese a, banco, cuentas y método de pago — no se cobra aquí
+     · el pie de firmas propio de LAPS y de Herrera, que sustituye
+       el de entregado / recibido */
+@media screen {
+  .doc-conduce .th-monto,
+  .doc-conduce .td-monto,
+  .doc-conduce .th-linea,
+  .doc-conduce .td-linea,
+  .doc-conduce .tot-der,
+  .doc-conduce .tipo-cambio-texto,
+  .doc-conduce .juany-abonos,
+  .doc-conduce .cli-fila-ncf,
+  .doc-conduce .pago-head,
+  .doc-conduce .pago-banco,
+  .doc-conduce .pago-cuentas,
+  .doc-conduce .pago-metodo,
+  .doc-conduce .laps-banco,
+  .doc-conduce .laps-firmas,
+  .doc-conduce.pl-hcl .hcl-firma-espacio {
+    opacity: .3;
+    transition: opacity .15s;
+  }
+  .doc-conduce .th-monto:hover,
+  .doc-conduce .td-monto:hover,
+  .doc-conduce .th-linea:hover,
+  .doc-conduce .td-linea:hover,
+  .doc-conduce .tot-der:hover,
+  .doc-conduce .tipo-cambio-texto:hover,
+  .doc-conduce .juany-abonos:hover,
+  .doc-conduce .cli-fila-ncf:hover,
+  .doc-conduce .pago-head:hover,
+  .doc-conduce .pago-banco:hover,
+  .doc-conduce .pago-cuentas:hover,
+  .doc-conduce .pago-metodo:hover,
+  .doc-conduce .laps-banco:hover,
+  .doc-conduce .laps-firmas:hover,
+  .doc-conduce.pl-hcl .hcl-firma-espacio:hover { opacity: .75; }
+}
+
+body.vista-impresion .doc-conduce .th-monto,
+body.vista-impresion .doc-conduce .td-monto,
+body.vista-impresion .doc-conduce .th-linea,
+body.vista-impresion .doc-conduce .td-linea,
+body.vista-impresion .doc-conduce .tot-der,
+body.vista-impresion .doc-conduce .tipo-cambio-texto,
+body.vista-impresion .doc-conduce .juany-abonos,
+body.vista-impresion .doc-conduce .cli-fila-ncf,
+body.vista-impresion .doc-conduce .pago-head,
+body.vista-impresion .doc-conduce .pago-banco,
+body.vista-impresion .doc-conduce .pago-cuentas,
+body.vista-impresion .doc-conduce .pago-metodo,
+body.vista-impresion .doc-conduce .laps-banco,
+body.vista-impresion .doc-conduce .laps-firmas,
+body.vista-impresion .doc-conduce.pl-hcl .hcl-firma-espacio {
+  display: none !important;
+  opacity: 1 !important;
+}
+
+@media print {
+  .doc-conduce .th-monto,
+  .doc-conduce .td-monto,
+  .doc-conduce .th-linea,
+  .doc-conduce .td-linea,
+  .doc-conduce .tot-der,
+  .doc-conduce .tipo-cambio-texto,
+  .doc-conduce .juany-abonos,
+  .doc-conduce .cli-fila-ncf,
+  .doc-conduce .pago-head,
+  .doc-conduce .pago-banco,
+  .doc-conduce .pago-cuentas,
+  .doc-conduce .pago-metodo,
+  .doc-conduce .laps-banco,
+  .doc-conduce .laps-firmas,
+  .doc-conduce.pl-hcl .hcl-firma-espacio {
+    display: none !important;
+    opacity: 1 !important;
+  }
+}
+
+/* =============================================
    MODAL OPCIONES — PESTAÑAS, ATAJOS Y CAMPOS
    ============================================= */
 .modal-opc-tabs {

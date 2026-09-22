@@ -802,6 +802,9 @@ function restaurarEstado(datos) {
 
   const sel = document.getElementById('sel-tipo-doc');
   if (sel && datos.tipoDoc) { sel.value = datos.tipoDoc; cambiarTipoDoc(datos.tipoDoc); }
+  // Cotizaciones guardadas antes de que existiera el selector no traen
+  // tipoDoc: hay que limpiar igual el modo conduce de la pestaña anterior.
+  else aplicarModoConduce(sel?.value);
 
   const fecha = document.getElementById('doc-fecha');
   if (fecha) fecha.value = datos.fecha || hoy();
@@ -1256,7 +1259,7 @@ function renderFilas() {
   const laps = Perfiles.plantilla() === 'laps';
   const hcl  = Perfiles.plantilla() === 'hcl';
   const numerar = laps && !leerOpcionesVis().numerar;
-  const columnas = laps ? (numerar ? 6 : 5) : 4;
+  const columnas = Plantilla.columnasTabla(Perfiles.plantilla(), numerar).length;
   const encabezadoNum = document.getElementById('laps-numero-item');
   if (encabezadoNum) encabezadoNum.hidden = !numerar;
   // Los importes sólo se editan en pesos: en dólares son la conversión
@@ -1376,7 +1379,8 @@ function renderFilas() {
   for (let x = total; x < 3; x++) {
     const tr2 = document.createElement('tr');
     tr2.className = 'tr-vacio';
-    tr2.innerHTML = '<td class="td-seleccion no-print"></td>' + '<td></td>'.repeat(columnas);
+    tr2.innerHTML = '<td class="td-seleccion no-print"></td>'
+                  + Plantilla.celdasVacias(Perfiles.plantilla(), numerar);
     tbody.appendChild(tr2);
   }
 }
@@ -2078,6 +2082,21 @@ function irAFila(id) {
 function cambiarTipoDoc(valor) {
   setText('doc-titulo-texto',  valor);
   setText('cli-tipo-doc-texto',valor);
+  aplicarModoConduce(valor);
+}
+
+// El conduce entrega mercancía, no cobra: no imprime importes ni
+// totales ni NCF, y en su lugar lleva el pie de entregado / recibido.
+// Igual que las opciones de visibilidad, en pantalla sólo se atenúa
+// (ver .doc-conduce en css/estilos.css): así los importes siguen ahí
+// y el mismo documento se puede volver a facturar sin reescribirlo.
+function esConduce(tipoDoc) {
+  return (tipoDoc || '') === 'CONDUCE';
+}
+
+function aplicarModoConduce(tipoDoc) {
+  document.getElementById('documento')
+    ?.classList.toggle('doc-conduce', esConduce(tipoDoc));
 }
 
 function cambiarEtiquetaNcf(valor, marcar = true) {
@@ -2843,6 +2862,7 @@ async function exportarHTML() {
   const vis      = leerOpcionesVis();
   const clasesVis = OPC_VIS.filter(k => vis[k]).map(k => ' sin-' + k).join('');
   const pl        = E.plantilla || 'clasica';
+  const claseCond = esConduce(estado.tipoDoc) ? ' doc-conduce' : '';
   const marca     = E.empresa?.nombre || 'Cotizacion';
   const hoja      = leerHoja();
   const anchoHoja = _anchoHojaPx(hoja.hoja, hoja.orientacion);
@@ -2909,7 +2929,11 @@ async function exportarHTML() {
     var ab=pM((document.getElementById('doc-abono')||{}).innerText||'0');
     sH('tot-adeudado','<strong>'+fN(tot-ab)+'</strong>');
   };
-  window.cambiarTipoDoc=function(v){sT('doc-titulo-texto',v);sT('cli-tipo-doc-texto',v);};
+  window.cambiarTipoDoc=function(v){
+    sT('doc-titulo-texto',v);sT('cli-tipo-doc-texto',v);
+    var pag=document.querySelector('.pagina');
+    if(pag) pag.classList.toggle('doc-conduce',v==='CONDUCE');
+  };
   window.cambiarEtiquetaNcf=function(v){sT('lbl-ncf',(v==='Avance'?'Avance':'NCF')+':');};
   window.imprimir=function(){
     var num=document.getElementById('doc-numero')?.textContent||'cotizacion';
@@ -3013,7 +3037,7 @@ ${_reglaPagina(hoja.hoja, hoja.orientacion)}
   </div>
 </div>
 
-<div class="pagina pl-${pl}${clasesVis}" style="width:${anchoHoja}px">${documentoHTML}</div>
+<div class="pagina pl-${pl}${clasesVis}${claseCond}" style="width:${anchoHoja}px">${documentoHTML}</div>
 
 <script>${scriptInline}<` + `/script>
 </body>

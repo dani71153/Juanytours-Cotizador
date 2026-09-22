@@ -333,7 +333,6 @@ ${editor ? '          <span id="tasa-indicador" class="tasa-indicador tasa-ind-o
     const itbisPct  = fi.itbisPorcentaje || 18;
     const etqItbis  = fi.etiquetaItbis   || 'ITBIS';
     const simbolo   = fi.simboloMoneda   || 'RD$';
-    const anio      = (e.fecha || '').slice(0, 4) || new Date().getFullYear();
 
     const tiposOpts = TIPOS_DOC
       .map(t => `<option value="${t}"${t === tipoDoc ? ' selected' : ''}>${t}</option>`)
@@ -387,7 +386,7 @@ ${editor ? '          <span id="tasa-indicador" class="tasa-indicador tasa-ind-o
         <div class="lm-val doc-numero-wrap">
           <span class="doc-numero" contenteditable="true" id="doc-numero">${esc(e.numero || '001')}</span>
         </div>
-        <div class="lm-val">${esc(anio)}</div>
+        <div class="lm-val">&nbsp;</div>
         <div class="lm-cab">FECHA</div>
         <div class="lm-val"><input type="date" id="doc-fecha" class="inp-fecha" value="${esc(e.fecha || '')}" /></div>
         <div class="lm-cab lm-fila-venc">Fecha de Vencimiento</div>

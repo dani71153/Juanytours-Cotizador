@@ -1628,7 +1628,9 @@ body.vista-impresion .doc-conduce .laps-firma-espacio {
 
 /* Lo que un conduce no imprime:
      · importes, totales y tasa de cambio — no cobra
-     · NCF — no es un documento fiscal
+     · NCF — no es un documento fiscal. En LAPS el comprobante
+       fiscal se escribe en el número del documento (el B15…),
+       así que ahí se retira también ese número
      · páguese a, banco, cuentas y método de pago — no se cobra aquí
      · el pie de firmas propio de LAPS y de Herrera, que sustituye
        el de entregado / recibido */
@@ -1641,6 +1643,7 @@ body.vista-impresion .doc-conduce .laps-firma-espacio {
   .doc-conduce .tipo-cambio-texto,
   .doc-conduce .juany-abonos,
   .doc-conduce .cli-fila-ncf,
+  .doc-conduce.pl-laps .doc-numero-wrap,
   .doc-conduce .pago-head,
   .doc-conduce .pago-banco,
   .doc-conduce .pago-cuentas,
@@ -1659,6 +1662,7 @@ body.vista-impresion .doc-conduce .laps-firma-espacio {
   .doc-conduce .tipo-cambio-texto:hover,
   .doc-conduce .juany-abonos:hover,
   .doc-conduce .cli-fila-ncf:hover,
+  .doc-conduce.pl-laps .doc-numero-wrap:hover,
   .doc-conduce .pago-head:hover,
   .doc-conduce .pago-banco:hover,
   .doc-conduce .pago-cuentas:hover,
@@ -1676,6 +1680,7 @@ body.vista-impresion .doc-conduce .tot-der,
 body.vista-impresion .doc-conduce .tipo-cambio-texto,
 body.vista-impresion .doc-conduce .juany-abonos,
 body.vista-impresion .doc-conduce .cli-fila-ncf,
+body.vista-impresion .doc-conduce.pl-laps .doc-numero-wrap,
 body.vista-impresion .doc-conduce .pago-head,
 body.vista-impresion .doc-conduce .pago-banco,
 body.vista-impresion .doc-conduce .pago-cuentas,
@@ -1696,6 +1701,7 @@ body.vista-impresion .doc-conduce.pl-hcl .hcl-firma-espacio {
   .doc-conduce .tipo-cambio-texto,
   .doc-conduce .juany-abonos,
   .doc-conduce .cli-fila-ncf,
+  .doc-conduce.pl-laps .doc-numero-wrap,
   .doc-conduce .pago-head,
   .doc-conduce .pago-banco,
   .doc-conduce .pago-cuentas,
